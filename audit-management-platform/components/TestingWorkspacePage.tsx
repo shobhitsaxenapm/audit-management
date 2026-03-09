@@ -13,13 +13,24 @@ import type {
   RuleExecutionResult,
   RuleLogic,
   TestingResult,
+  ControlDataSource,
+  SampleEvidence,
+  DataViewerDataset,
 } from "../types";
+import { DEFAULT_EVIDENCE_TYPES } from "../types";
 import { detailedControlData } from "../constants";
 import SampleNavigator from "./SampleNavigator";
 import TestingSummaryPanel from "./TestingSummary";
 import Toast from "./Toast";
 import TestingPanel from "./TestingPanel";
-import { ChevronRightIcon, UploadIcon, InfoCircleIcon } from "./icons/Icons";
+import { ChevronRightIcon, UploadIcon, InfoCircleIcon, CloseIcon, TableIcon } from "./icons/Icons";
+import ControlDataSourcesSection from "./ControlDataSourcesSection";
+import DatasetPreviewModal from "./DatasetPreviewModal";
+import SampleEvidenceSection from "./SampleEvidenceSection";
+import DataViewerPanel from "./DataViewerPanel";
+import TestingReportModal from "./TestingReportModal";
+import SampleDetailReportModal from "./SampleDetailReportModal";
+import { dataViewerDatasets, datasetNameToId } from "../dataViewerData";
 
 // --- HELPER & SUB-COMPONENTS (scoped to this file) ---
 
@@ -111,25 +122,96 @@ const TestScriptHeader: React.FC<{
   </div>
 );
 
-const SampleData: React.FC<{ recordData: Record<string, any> }> = ({
-  recordData,
-}) => (
-  <div className="mb-6">
-    <h3 className="text-base font-semibold text-gray-800 mb-3">Sample Data</h3>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 text-sm p-4 border border-gray-200 rounded-lg bg-gray-50">
-      {Object.entries(recordData).map(([key, value]) => (
-        <div key={key}>
-          <dt className="font-medium text-gray-500 capitalize truncate">
-            {key.replace(/([A-Z])/g, " $1")}
-          </dt>
-          <dd className="text-gray-900 font-semibold truncate">
-            {String(value ?? "null")}
-          </dd>
-        </div>
-      ))}
+const SampleData: React.FC<{ recordData: Record<string, any>; dataSources: ControlDataSource[]; setPreviewDataset: (ds: ControlDataSource) => void; onOpenDataViewer?: (ds: ControlDataSource, sampleKeyValue?: string) => void }> = ({
+  recordData, dataSources, setPreviewDataset, onOpenDataViewer
+}) => {
+  // Guard: attribute-based controls don't have recordData
+  if (!recordData || Object.keys(recordData).length === 0) {
+    return null;
+  }
+  // Find matched data from uploaded sets
+  const matchedRecords = dataSources
+    .filter(ds => ds.matchingKey && ds.records && ds.records.length > 0)
+    .map(ds => {
+      const sampleKeyValue = recordData[ds.matchingKey!];
+      const match = ds.records!.find(r => r[ds.matchingKey!] === sampleKeyValue);
+      return { dataset: ds, match, sampleKeyValue };
+    })
+    .filter(m => m.match); // only show if there is actually a matching record
+
+  return (
+    <div className="mb-6">
+      <h3 className="text-base font-semibold text-gray-800 mb-3">Sample Data</h3>
+      
+      {/* Existing Sample Data Fields */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 text-sm p-4 border border-gray-200 rounded-lg bg-gray-50 mb-4">
+        {Object.entries(recordData).map(([key, value]) => (
+          <div key={key}>
+            <dt className="font-medium text-gray-500 capitalize truncate">
+              {key.replace(/([A-Z])/g, " $1")}
+            </dt>
+            <dd className="text-gray-900 font-semibold truncate">
+              {String(value ?? "null")}
+            </dd>
+          </div>
+        ))}
+      </div>
+
+      {/* Matched Data Sources */}
+      {dataSources.length > 0 && (
+         <div className="mt-4">
+             <h4 className="text-sm font-medium text-gray-700 mb-2">Matched References (based on Sample Keys)</h4>
+             <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                    {dataSources.map(ds => {
+                         const hasKey = ds.matchingKey;
+                         const sampleVal = hasKey ? recordData[ds.matchingKey!] : undefined;
+                         const isMatchFound = hasKey && ds.records ? !!ds.records.find(r => r[ds.matchingKey!] === sampleVal) : false;
+
+                         return (
+                           <li key={ds.id} className="p-3 flex items-center justify-between text-sm">
+                               <div className="flex items-center">
+                                  <span className="font-medium text-gray-800">{ds.filename}</span>
+                                  {hasKey ? (
+                                     <span className={`ml-3 px-2 py-0.5 rounded text-xs font-medium ${isMatchFound ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                         {isMatchFound ? `Matched on: ${ds.matchingKey} (${sampleVal})` : `No match for ${ds.matchingKey}`}
+                                     </span>
+                                  ) : (
+                                     <span className="ml-3 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                                         No matching key configured
+                                     </span>
+                                  )}
+                               </div>
+                               <div className="flex gap-2">
+                                   {onOpenDataViewer && (
+                                     <button 
+                                       onClick={() => {
+                                         const sampleVal = hasKey ? recordData[ds.matchingKey!] : undefined;
+                                         onOpenDataViewer(ds, sampleVal ? String(sampleVal) : undefined);
+                                       }}
+                                       className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-900 font-semibold"
+                                     >
+                                       <TableIcon className="h-3.5 w-3.5" />
+                                       View Data
+                                     </button>
+                                   )}
+                                    <button 
+                                       onClick={() => setPreviewDataset(ds)}
+                                       className="text-gray-500 hover:text-gray-700 font-medium"
+                                    >
+                                       Preview
+                                    </button>
+                                </div>
+                           </li>
+                         );
+                    })}
+                </ul>
+             </div>
+         </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const RuleEvaluationTable: React.FC<{
   rules: TestScriptRule[];
@@ -319,6 +401,103 @@ const TestingWorkspacePage: React.FC<{
   const [finalSampleDecisions, setFinalSampleDecisions] = useState<
     Record<string, AuditorOverride>
   >({});
+  
+  // NEW STATE: Control Data Sources
+  const [dataSources, setDataSources] = useState<ControlDataSource[]>([]);
+  const [previewDataset, setPreviewDataset] = useState<ControlDataSource | null>(null);
+  const [viewerDataset, setViewerDataset] = useState<DataViewerDataset | null>(null);
+  const [viewerHighlightId, setViewerHighlightId] = useState<string | undefined>(undefined);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showSampleReportModal, setShowSampleReportModal] = useState(false);
+
+  const openDataViewer = useCallback((ds: ControlDataSource, sampleKeyValue?: string) => {
+    const datasetId = datasetNameToId[ds.filename] || datasetNameToId[controlDetails?.snapshot?.datasetName || ''];
+    if (datasetId && dataViewerDatasets[datasetId]) {
+      setViewerDataset(dataViewerDatasets[datasetId]);
+      setViewerHighlightId(sampleKeyValue);
+    } else {
+      // Fallback to the first available dataset if filename doesn't match
+      const fallbackKey = Object.keys(dataViewerDatasets)[0];
+      if (fallbackKey) {
+        setViewerDataset(dataViewerDatasets[fallbackKey]);
+        setViewerHighlightId(sampleKeyValue);
+      } else {
+        setPreviewDataset(ds);
+      }
+    }
+  }, [controlDetails]);
+
+  // NEW STATE: Per-sample evidence
+  const [sampleEvidence, setSampleEvidence] = useState<Record<string, SampleEvidence[]>>(() => {
+    const initial: Record<string, SampleEvidence[]> = {};
+    if (controlDetails) {
+      controlDetails.samples.forEach((sample: any) => {
+        initial[sample.sampleId] = DEFAULT_EVIDENCE_TYPES.map((tmpl, idx) => ({
+          ...tmpl,
+          id: `${sample.sampleId}-ev-${idx}`,
+        }));
+      });
+    }
+    return initial;
+  });
+  const [evidenceViewerUrl, setEvidenceViewerUrl] = useState<{ url: string; filename: string } | null>(null);
+
+  // NEW STATE: 2-Step flow
+  const [testingStep, setTestingStep] = useState<1 | 2>(1);
+
+  const handleEvidenceUpload = useCallback((evidenceId: string, file: File) => {
+    const sampleId = controlDetails!.samples[currentSampleIndex].sampleId;
+    const fileUrl = URL.createObjectURL(file);
+    setSampleEvidence(prev => ({
+      ...prev,
+      [sampleId]: prev[sampleId].map(ev =>
+        ev.id === evidenceId
+          ? { ...ev, filename: file.name, fileUrl, uploadDate: new Date().toLocaleDateString() }
+          : ev
+      ),
+    }));
+  }, [controlDetails, currentSampleIndex]);
+
+  const handleEvidenceView = useCallback((ev: SampleEvidence) => {
+    if (ev.fileUrl) {
+      setEvidenceViewerUrl({ url: ev.fileUrl, filename: ev.filename || 'Document' });
+    }
+  }, []);
+
+  // Evidence readiness logic
+  const evidenceReadiness = useMemo(() => {
+    const result: Record<string, 'pending' | 'ready'> = {};
+    if (!controlDetails) return result;
+    controlDetails.samples.forEach((sample: any) => {
+      const evList = sampleEvidence[sample.sampleId] || [];
+      const allUploaded = evList.length > 0 && evList.every(ev => !!ev.filename);
+      result[sample.sampleId] = allUploaded ? 'ready' : 'pending';
+    });
+    return result;
+  }, [controlDetails, sampleEvidence]);
+
+  const allSamplesReady = useMemo(() => {
+    if (!controlDetails || controlDetails.samples.length === 0) return false;
+    return controlDetails.samples.every((s: any) => evidenceReadiness[s.sampleId] === 'ready');
+  }, [controlDetails, evidenceReadiness]);
+
+  // Current sample evidence completeness for the tracker
+  const currentSampleMissingEvidence = useMemo(() => {
+    if (!controlDetails) return [];
+    const sample = controlDetails.samples[currentSampleIndex];
+    if (!sample) return [];
+    const evList = sampleEvidence[sample.sampleId] || [];
+    return evList.filter(ev => !ev.filename);
+  }, [controlDetails, currentSampleIndex, sampleEvidence]);
+
+  const handleRunTesting = () => {
+    if (!allSamplesReady) {
+      showToast('Please upload all required evidence for every sample before running testing.');
+      return;
+    }
+    setTestingStep(2);
+    showToast('Testing executed. Review results below.');
+  };
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -507,22 +686,24 @@ const TestingWorkspacePage: React.FC<{
         "Are you sure you want to submit for review? This action will lock testing.",
       )
     ) {
-      const finalConclusion: ControlConclusion =
+      // System Result is computed here — but Conclusion stays null until reviewer approves
+      const computedSystemResult: 'Effective' | 'Ineffective' =
         summary.failed / summary.total > 0.1 ? "Ineffective" : "Effective";
       const updatedControl: EngagementControl = {
         ...control,
         status: "Pending Review",
-        conclusion: finalConclusion,
+        systemResult: computedSystemResult,
+        conclusion: null, // Conclusion is only set after reviewer approval
         samplesTested: `${summary.tested}/${summary.total}`,
+        testedSamples: summary.tested,
+        totalSamples: summary.total,
         exceptions: summary.failed,
-        // FIX: Removed redundant .replace() call.
         lastUpdated: new Date().toLocaleDateString("en-GB", {
           day: "numeric",
           month: "short",
           year: "numeric",
         }),
         submittedBy: "Aarav Mehta",
-        // FIX: Removed redundant .replace() call which was causing a runtime error.
         submittedOn: new Date().toLocaleDateString("en-GB", {
           day: "numeric",
           month: "short",
@@ -534,6 +715,34 @@ const TestingWorkspacePage: React.FC<{
       setTimeout(() => onExit(updatedControl), 500);
     }
   };
+  // These hooks MUST be called before any early return to comply with React's Rules of Hooks.
+  const currentSample = controlDetails?.samples[currentSampleIndex];
+
+  const currentSampleExecutionResults = useMemo(
+    () =>
+      isDynamicTestScript && controlDetails?.testScript && currentSample
+        ? controlDetails.testScript.rules.reduce(
+            (acc, rule) => {
+              acc[rule.id] = evaluateRule(currentSample, rule);
+              return acc;
+            },
+            {} as Record<number, RuleExecutionResult>,
+          )
+        : {},
+    [isDynamicTestScript, controlDetails, currentSample, evaluateRule],
+  );
+
+  const systemDeterminedResult = useMemo(() => {
+    if (!isDynamicTestScript) return "N/A";
+    const results = Object.values(currentSampleExecutionResults) as RuleExecutionResult[];
+    if (results.some((r) => r.systemResult === "FAIL")) return "FAIL";
+    if (
+      results.length > 0 &&
+      results.every((r) => r.systemResult === "NOT_APPLICABLE")
+    )
+      return "NOT_APPLICABLE";
+    return "PASS";
+  }, [isDynamicTestScript, currentSampleExecutionResults]);
 
   if (
     !controlDetails ||
@@ -547,36 +756,9 @@ const TestingWorkspacePage: React.FC<{
     );
   }
 
-  const currentSample = controlDetails.samples[currentSampleIndex];
-
-  const currentSampleExecutionResults = useMemo(
-    () =>
-      isDynamicTestScript
-        ? controlDetails.testScript!.rules.reduce(
-            (acc, rule) => {
-              acc[rule.id] = evaluateRule(currentSample, rule);
-              return acc;
-            },
-            {} as Record<number, RuleExecutionResult>,
-          )
-        : {},
-    [isDynamicTestScript, controlDetails, currentSample, evaluateRule],
-  );
-
-  const systemDeterminedResult = useMemo(() => {
-    if (!isDynamicTestScript) return "N/A";
-    const results = Object.values(currentSampleExecutionResults);
-    if (results.some((r) => r.systemResult === "FAIL")) return "FAIL";
-    if (
-      results.length > 0 &&
-      results.every((r) => r.systemResult === "NOT_APPLICABLE")
-    )
-      return "NOT_APPLICABLE";
-    return "PASS";
-  }, [isDynamicTestScript, currentSampleExecutionResults]);
-
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-lg border border-gray-200 shadow-sm">
+      {/* --- HEADER --- */}
       <header className="flex-shrink-0 p-4 border-b border-gray-200">
         <div className="flex items-center text-sm text-gray-500 mb-2">
           <button onClick={() => onExit()} className="hover:text-gray-900">
@@ -584,97 +766,384 @@ const TestingWorkspacePage: React.FC<{
           </button>
           <ChevronRightIcon className="h-4 w-4 mx-1" />
           <span className="font-medium text-gray-800">Perform Testing</span>
+          <ChevronRightIcon className="h-4 w-4 mx-1" />
+          <span className={`font-medium ${testingStep === 1 ? 'text-indigo-600' : 'text-gray-800'}`}>
+            {testingStep === 1 ? 'Step 1: Evidence Collection' : 'Step 2: Testing Results'}
+          </span>
         </div>
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900">
-            {control.controlId}: {control.controlName}
-          </h2>
-          <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-md">
-            Sample{" "}
-            <span className="text-indigo-600">{currentSampleIndex + 1}</span> of{" "}
-            {summary.total}
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-900">
+              {control.controlId}: {control.controlName}
+            </h2>
+            {testingStep === 2 && (
+              <button
+                onClick={() => setTestingStep(1)}
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+              >
+                ← Back to Evidence
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Step indicator pills */}
+            <div className="flex items-center gap-1">
+              <span className={`w-3 h-3 rounded-full ${testingStep === 1 ? 'bg-indigo-600' : 'bg-indigo-200'}`} />
+              <span className={`w-3 h-3 rounded-full ${testingStep === 2 ? 'bg-indigo-600' : 'bg-indigo-200'}`} />
+            </div>
+            <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-md">
+              Sample{" "}
+              <span className="text-indigo-600">{currentSampleIndex + 1}</span> of{" "}
+              {summary.total}
+            </div>
           </div>
         </div>
       </header>
 
+      {/* --- BODY --- */}
       <div className="flex-grow flex overflow-hidden">
         <SampleNavigator
           samples={controlDetails.samples}
           statuses={sampleStatuses}
           currentIndex={currentSampleIndex}
           onSelect={setCurrentSampleIndex}
+          mode={testingStep === 1 ? 'evidence' : 'results'}
+          evidenceStatuses={evidenceReadiness}
         />
 
         <main className="flex-grow p-6 overflow-y-auto">
           <TestScriptHeader control={control} controlDetails={controlDetails} />
-          {isDynamicTestScript ? (
+
+          {/* ========================= STEP 1: Evidence Collection ========================= */}
+          {testingStep === 1 && (
             <>
-              <SampleData recordData={currentSample.recordData} />
-              <RuleEvaluationTable
-                rules={controlDetails.testScript!.rules}
-                executionResults={currentSampleExecutionResults}
-                auditorInputs={resultsState[currentSample.sampleId]}
-                onUpdate={handleUpdateRuleResult}
-                isLocked={overallStatus === "Submitted"}
-              />
-              <div className="mt-6 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-gray-800">
-                    Final Sample Result
-                  </h4>
-                  <p className="text-sm text-gray-500">
-                    System Determined Result:{" "}
-                    <span
-                      className={`font-bold ${systemDeterminedResult === "PASS" ? "text-green-600" : systemDeterminedResult === "FAIL" ? "text-red-600" : "text-gray-500"}`}
-                    >
-                      {systemDeterminedResult === "NOT_APPLICABLE"
-                        ? "N/A"
-                        : systemDeterminedResult}
-                    </span>
-                  </p>
+              {/* Control Data Sources */}
+              {currentSample ? (
+                <ControlDataSourcesSection
+                  dataSources={dataSources}
+                  onAddDataSource={(ds) => setDataSources(prev => [...prev, ds])}
+                  onRemoveDataSource={(id) => setDataSources(prev => prev.filter(d => d.id !== id))}
+                  onUpdateMatchingKey={(id, key) => setDataSources(prev => prev.map(d => d.id === id ? { ...d, matchingKey: key} : d))}
+                  availableKeys={Object.keys(currentSample.recordData || {})}
+                />
+              ) : (
+                <div className="mb-8 p-6 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm text-yellow-800">
+                  <p className="font-semibold">No Samples Generated</p>
+                  <p className="text-sm mt-1">Please return to the control overview and generate a sample before performing testing.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="finalDecision"
-                    className="text-sm font-medium"
-                  >
-                    Auditor Final Decision:
-                  </label>
-                  <select
-                    id="finalDecision"
-                    value={finalSampleDecisions[currentSample.sampleId] || ""}
-                    onChange={(e) =>
-                      setFinalSampleDecisions((prev) => ({
-                        ...prev,
-                        [currentSample.sampleId]: e.target
-                          .value as AuditorOverride,
-                      }))
-                    }
-                    disabled={overallStatus === "Submitted"}
-                    className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100"
-                  >
-                    <option value="">System</option>
-                    <option value="PASS">PASS</option>
-                    <option value="FAIL">FAIL</option>
-                    <option value="NOT_APPLICABLE">N/A</option>
-                  </select>
-                </div>
+              )}
+
+              {/* Action Required Banner */}
+              <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                <InfoCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 font-medium">
+                  <span className="font-bold">Action Required:</span> You must upload or select all required data sources before you can submit testing for review.
+                </p>
               </div>
+
+              {/* Sample Data */}
+              {currentSample && (
+                <SampleData recordData={currentSample.recordData} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
+              )}
+
+              {/* Sample Evidence */}
+              {currentSample && (
+                <SampleEvidenceSection
+                  evidence={sampleEvidence[currentSample.sampleId] || []}
+                  onUpload={handleEvidenceUpload}
+                  onReplace={handleEvidenceUpload}
+                  onView={handleEvidenceView}
+                  isLocked={overallStatus === "Submitted"}
+                />
+              )}
+
+              {/* Attributes to be Tested */}
+              {currentSample && (controlDetails.attributes || controlDetails.testScript) && (() => {
+                // Build attribute list from either attributes or testScript rules
+                const attrList: { name: string; type: string }[] = controlDetails.testScript
+                  ? controlDetails.testScript.rules.map(r => ({ name: r.description || r.name, type: r.type }))
+                  : (controlDetails.attributes || []).map(a => ({ name: a.name, type: a.mandatory ? 'Mandatory' : 'Optional' }));
+
+                if (attrList.length === 0) return null;
+
+                // Map each attribute to required evidence types based on keywords
+                const evidenceKeywordMap: Record<string, string[]> = {
+                  'estimate': ['Estimate PDF'],
+                  'media invoice': ['Media Invoice PDF'],
+                  'publication invoice': ['Publication Invoice PDF'],
+                  'supporting': ['Supporting Document'],
+                  'invoice': ['Media Invoice PDF', 'Publication Invoice PDF'],
+                  'vendor': ['Publication Invoice PDF'],
+                  'document': ['Supporting Document'],
+                };
+
+                const currentEvidence = sampleEvidence[currentSample.sampleId] || [];
+
+                const rows = attrList.map(attr => {
+                  const nameLower = attr.name.toLowerCase();
+                  const requiredEvidenceSet = new Set<string>();
+                  
+                  for (const [keyword, evidenceTypes] of Object.entries(evidenceKeywordMap)) {
+                    if (nameLower.includes(keyword)) {
+                      evidenceTypes.forEach(et => requiredEvidenceSet.add(et));
+                    }
+                  }
+                  
+                  // If no keywords matched, require all evidence
+                  if (requiredEvidenceSet.size === 0) {
+                    currentEvidence.forEach(ev => requiredEvidenceSet.add(ev.evidenceType));
+                  }
+
+                  const requiredEvidence = Array.from(requiredEvidenceSet);
+                  const allPresent = requiredEvidence.length > 0 && requiredEvidence.every(
+                    reqType => currentEvidence.some(ev => ev.evidenceType === reqType && !!ev.filename)
+                  );
+
+                  return { name: attr.name, type: attr.type, requiredEvidence, ready: allPresent };
+                });
+
+                return (
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-gray-800 mb-3">Attributes to be Tested</h3>
+                    <p className="text-xs text-gray-500 mb-3">These checks will be evaluated when testing runs. No results are shown until testing is executed.</p>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/2">Attribute / Test Rule</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/3">Evidence Required</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/6">Readiness</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {rows.map((row, i) => (
+                            <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
+                              <td className="px-4 py-3 text-sm text-gray-800">
+                                <div className="flex items-center gap-2">
+                                  <span>{row.name}</span>
+                                  <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${row.type === 'Mandatory' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                    {row.type}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {row.requiredEvidence.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {row.requiredEvidence.map(ev => (
+                                      <span key={ev} className="inline-block px-2 py-0.5 text-xs rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        {ev}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic">No specific evidence mapped</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                {row.ready ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                    Ready
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+                                    Missing Evidence
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Evidence Completion Tracker */}
+              {currentSample && (
+                <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-2">Evidence Completion — Sample {currentSampleIndex + 1}</h4>
+                  {currentSampleMissingEvidence.length === 0 ? (
+                    <div className="flex items-center gap-2 text-green-700">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                      <span className="text-sm font-medium">All evidence uploaded for this sample.</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-red-700 font-medium mb-2">Missing {currentSampleMissingEvidence.length} item(s):</p>
+                      <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
+                        {currentSampleMissingEvidence.map(ev => (
+                          <li key={ev.id}>{ev.evidenceType}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Overall readiness */}
+                  <div className="mt-4 pt-3 border-t border-gray-200">
+                    <h5 className="text-xs font-semibold text-gray-600 uppercase mb-1">Overall Control Readiness</h5>
+                    <div className="flex items-center gap-2">
+                      {allSamplesReady ? (
+                        <>
+                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
+                          <span className="text-sm font-medium text-green-700">All samples ready — you can run testing.</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+                          <span className="text-sm font-medium text-amber-700">
+                            {Object.values(evidenceReadiness).filter(v => v === 'ready').length} of {controlDetails.samples.length} samples ready.
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
-          ) : (
-            <TestingPanel
-              sample={currentSample}
-              attributes={controlDetails.attributes!}
-              results={legacyResultsState[currentSample.sampleId] || {}}
-              onUpdate={handleUpdateLegacyResult}
-              isLocked={overallStatus === "Submitted"}
-            />
+          )}
+
+          {/* ========================= STEP 2: Testing Results ========================= */}
+          {testingStep === 2 && (
+            <>
+              {isDynamicTestScript && currentSample ? (
+                <>
+                  <SampleData recordData={currentSample.recordData} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
+                  <RuleEvaluationTable
+                    rules={controlDetails.testScript!.rules}
+                    executionResults={currentSampleExecutionResults}
+                    auditorInputs={resultsState[currentSample.sampleId]}
+                    onUpdate={handleUpdateRuleResult}
+                    isLocked={overallStatus === "Submitted"}
+                  />
+                  <div className="mt-6 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-gray-800">
+                        Final Sample Result
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        System Determined Result:{" "}
+                        <span
+                          className={`font-bold ${systemDeterminedResult === "PASS" ? "text-green-600" : systemDeterminedResult === "FAIL" ? "text-red-600" : "text-gray-500"}`}
+                        >
+                          {systemDeterminedResult === "NOT_APPLICABLE"
+                            ? "N/A"
+                            : systemDeterminedResult}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setShowSampleReportModal(true)}
+                        className="rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-50"
+                      >
+                        Sample Report
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="finalDecision"
+                          className="text-sm font-medium"
+                        >
+                          Auditor Final Decision:
+                        </label>
+                        <select
+                          id="finalDecision"
+                          value={finalSampleDecisions[currentSample.sampleId] || ""}
+                          onChange={(e) =>
+                            setFinalSampleDecisions((prev) => ({
+                              ...prev,
+                              [currentSample.sampleId]: e.target
+                                .value as AuditorOverride,
+                            }))
+                          }
+                          disabled={overallStatus === "Submitted"}
+                          className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100"
+                        >
+                          <option value="">System</option>
+                          <option value="PASS">PASS</option>
+                          <option value="FAIL">FAIL</option>
+                          <option value="NOT_APPLICABLE">N/A</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <TestingPanel
+                    sample={currentSample}
+                    attributes={controlDetails.attributes!}
+                    results={legacyResultsState[currentSample.sampleId] || {}}
+                    onUpdate={handleUpdateLegacyResult}
+                    isLocked={overallStatus === "Submitted"}
+                  />
+                  <div className="mt-6 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-gray-800">Final Sample Result</h4>
+                      <p className="text-sm text-gray-500">
+                        System Determined Result: <span className="font-bold text-gray-800">{sampleStatuses[currentSample.sampleId] || "Not Tested"}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowSampleReportModal(true)}
+                      className="rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-50"
+                    >
+                      Sample Report
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
           )}
         </main>
 
-        <TestingSummaryPanel summary={summary} />
+        {/* Right side panel — only show Control Summary in Step 2 */}
+        {testingStep === 2 && <TestingSummaryPanel summary={summary} />}
+
+        {/* Step 1: Evidence readiness panel */}
+        {testingStep === 1 && (
+          <aside className="w-72 flex-shrink-0 border-l border-gray-200 bg-white p-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Evidence Overview</h3>
+            <div className="space-y-3">
+              {controlDetails.samples.map((sample: any, idx: number) => {
+                const status = evidenceReadiness[sample.sampleId] || 'pending';
+                const evList = sampleEvidence[sample.sampleId] || [];
+                const uploaded = evList.filter(ev => !!ev.filename).length;
+                return (
+                  <button
+                    key={sample.sampleId}
+                    onClick={() => setCurrentSampleIndex(idx)}
+                    className={`w-full text-left p-3 rounded-md border text-sm transition ${
+                      idx === currentSampleIndex ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-800">Sample {idx + 1}</span>
+                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        status === 'ready' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {status === 'ready' ? 'Ready' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">{uploaded}/{evList.length} evidence items</div>
+                    {/* Mini progress bar */}
+                    <div className="mt-1.5 w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full ${status === 'ready' ? 'bg-green-500' : 'bg-amber-400'}`}
+                        style={{ width: `${evList.length > 0 ? (uploaded / evList.length) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+        )}
       </div>
 
+      {/* --- FOOTER --- */}
       <footer className="flex-shrink-0 p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
         <div className="flex gap-2">
           <button
@@ -692,19 +1161,80 @@ const TestingWorkspacePage: React.FC<{
             Next Sample
           </button>
         </div>
-        <button
-          onClick={handleSubmitForReview}
-          disabled={
-            summary.notTested > 0 ||
-            overallStatus === "Submitted" ||
-            engagement.status !== "IN PROGRESS"
-          }
-          className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
-        >
-          Submit for Review
-        </button>
+
+        {testingStep === 1 ? (
+          <button
+            onClick={handleRunTesting}
+            disabled={!allSamplesReady}
+            className="rounded-md bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition"
+          >
+            Run Testing
+          </button>
+        ) : (
+          <>
+          <button
+            onClick={() => setShowReportModal(true)}
+            disabled={summary.notTested > 0}
+            className="rounded-md bg-white px-5 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            Working Paper
+          </button>
+          <button
+            onClick={handleSubmitForReview}
+            disabled={
+              summary.notTested > 0 ||
+              overallStatus === "Submitted" ||
+              engagement.status !== "IN PROGRESS"
+            }
+            className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
+          >
+            Submit for Review
+          </button>
+          </>
+        )}
       </footer>
+
       <Toast message={toastMessage} />
+      {previewDataset && (
+         <DatasetPreviewModal dataset={previewDataset} onClose={() => setPreviewDataset(null)} />
+      )}
+      {viewerDataset && (
+        <DataViewerPanel dataset={viewerDataset} onClose={() => { setViewerDataset(null); setViewerHighlightId(undefined); }} highlightRowId={viewerHighlightId} />
+      )}
+      {evidenceViewerUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Evidence: {evidenceViewerUrl.filename}</h3>
+              <button onClick={() => setEvidenceViewerUrl(null)} className="text-gray-400 hover:text-gray-600">
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-grow overflow-hidden p-1">
+              <iframe src={evidenceViewerUrl.url} className="w-full h-full min-h-[60vh]" title="Evidence Viewer" />
+            </div>
+          </div>
+        </div>
+      )}
+      {showReportModal && controlDetails && (
+        <TestingReportModal
+          control={control}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
+      {showSampleReportModal && controlDetails && currentSample && (
+        <SampleDetailReportModal
+          controlId={control.controlId}
+          controlName={control.controlName}
+          sample={currentSample}
+          sampleIndex={currentSampleIndex}
+          evidence={sampleEvidence[currentSample.sampleId] || []}
+          sampleStatus={sampleStatuses[currentSample.sampleId] || 'NOT_TESTED'}
+          systemDeterminedResult={systemDeterminedResult}
+          attributes={isDynamicTestScript ? controlDetails.testScript!.rules.map(r => ({id: r.id, name: r.description || r.name})) : controlDetails.attributes!.map(a => ({id: a.attributeId, name: a.name}))}
+          onClose={() => setShowSampleReportModal(false)}
+        />
+      )}
     </div>
   );
 };

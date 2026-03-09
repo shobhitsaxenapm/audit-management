@@ -8,6 +8,7 @@ import EngagementWorkspaceToolbar from './EngagementWorkspaceToolbar';
 import EngagementWorkspaceTable from './EngagementWorkspaceTable';
 import ControlDetailPanel from './ControlDetailPanel';
 import Toast from './Toast';
+import EngagementReportModal from './EngagementReportModal';
 
 interface EngagementWorkspacePageProps {
   engagement: Engagement;
@@ -15,17 +16,37 @@ interface EngagementWorkspacePageProps {
   onBack: () => void;
   onPerformTesting: (control: EngagementControl) => void;
   onReviewControl: (control: EngagementControl) => void;
+  onCloseEngagement: () => void;
 }
 
-const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engagement, controls, onBack, onPerformTesting, onReviewControl }) => {
+const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engagement, controls, onBack, onPerformTesting, onReviewControl, onCloseEngagement }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<EngagementControlSortConfig>({ key: 'controlId', direction: 'ascending' });
   const [activeSummaryFilter, setActiveSummaryFilter] = useState<EngagementControlSummaryFilter | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [selectedControl, setSelectedControl] = useState<EngagementControl | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showEngagementReport, setShowEngagementReport] = useState(false);
   
   const isEngagementClosed = engagement.status === 'CLOSED';
+
+  // Close-engagement validation
+  const unconcludedCount = useMemo(() => controls.filter(c => c.status !== 'Concluded').length, [controls]);
+  const canCloseEngagement = !isEngagementClosed && controls.length > 0 && unconcludedCount === 0;
+  const closeDisabledReason = isEngagementClosed
+    ? undefined
+    : controls.length === 0
+      ? 'No controls linked to this engagement.'
+      : unconcludedCount > 0
+        ? `${unconcludedCount} control(s) are not yet Concluded. All controls must complete testing and review.`
+        : undefined;
+
+  const handleCloseEngagement = () => {
+    if (!canCloseEngagement) return;
+    if (window.confirm('Are you sure you want to close this engagement? This will lock all controls and make the engagement read-only.')) {
+      onCloseEngagement();
+    }
+  };
 
   // If engagement is closed, treat all controls as concluded for display purposes.
   const displayedControls = useMemo(() => {
@@ -55,10 +76,10 @@ const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engag
       filtered = filtered.filter(control => {
         switch (activeSummaryFilter) {
           case 'Key Controls': return control.key;
-          case 'In Progress': return control.status === 'In Testing';
+          case 'Work In Progress': return ['Evidence Collection', 'Testing In Progress'].includes(control.status);
           case 'Pending Review': return control.status === 'Pending Review';
           case 'Concluded': return control.status === 'Concluded';
-          case 'Deficient': return control.conclusion === 'Ineffective';
+          case 'Deficient': return control.status === 'Concluded' && control.conclusion === 'Ineffective';
           default: return true;
         }
       });
@@ -104,6 +125,11 @@ const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engag
   const handleControlClick = (control: EngagementControl) => {
     if (isEngagementClosed) return;
     
+    if (control.status === 'Concluded') {
+      showToast(`Control ${control.controlId} is Concluded and locked. No further editing is allowed.`);
+      return;
+    }
+    
     if (control.status === 'Pending Review') {
       onReviewControl(control);
     } else {
@@ -114,7 +140,15 @@ const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engag
 
   return (
     <div>
-      <EngagementWorkspaceHeader engagement={engagement} onBack={onBack} isClosed={isEngagementClosed} />
+      <EngagementWorkspaceHeader 
+        engagement={engagement} 
+        onBack={onBack} 
+        isClosed={isEngagementClosed} 
+        canClose={canCloseEngagement} 
+        onCloseEngagement={handleCloseEngagement} 
+        closeDisabledReason={closeDisabledReason} 
+        onExportReport={() => setShowEngagementReport(true)}
+      />
       <EngagementWorkspaceSummary controls={displayedControls} activeFilter={activeSummaryFilter} onFilterClick={handleSummaryFilter} />
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm mt-6">
         <EngagementWorkspaceToolbar 
@@ -142,6 +176,13 @@ const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engag
         />
       )}
       <Toast message={toastMessage} />
+      {showEngagementReport && (
+        <EngagementReportModal
+          engagement={engagement}
+          controls={displayedControls}
+          onClose={() => setShowEngagementReport(false)}
+        />
+      )}
     </div>
   );
 };

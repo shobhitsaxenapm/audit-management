@@ -191,8 +191,9 @@ const ReviewerWorkspacePage: React.FC<ReviewerWorkspacePageProps> = ({ control, 
     const handleReject = (reason: string) => {
         const updatedControl: EngagementControl = {
             ...control,
-            status: 'In Testing',
+            status: 'Testing In Progress',
             conclusion: null, // Reset conclusion
+            systemResult: null, // Reset system result — testing must be redone
         };
         setAuditTrail(prev => [{ date: new Date().toLocaleString('en-GB'), user: 'Riya Sharma (Reviewer)', action: 'Rejected', details: reason }, ...prev]);
         setRejectModalOpen(false);

@@ -11,9 +11,9 @@ interface EngagementSummaryStripProps {
 const EngagementSummaryStrip: React.FC<EngagementSummaryStripProps> = ({ engagements, activeFilter, onFilterClick }) => {
   const stats = useMemo(() => ({
     'Total Active': engagements.filter(e => e.status !== 'CLOSED').length,
-    'Completed (YTD)': engagements.filter(e => e.status === 'CLOSED').length,
-    'Open Deficiencies': engagements.filter(e => e.status !== 'CLOSED').reduce((acc, e) => acc + e.totalDeficiencies, 0),
+    'In Progress': engagements.filter(e => e.status === 'IN PROGRESS').length,
     'Under Review': engagements.filter(e => e.status === 'UNDER REVIEW').length,
+    'Completed (YTD)': engagements.filter(e => e.status === 'CLOSED').length,
   }), [engagements]);
   
   const StatItem: React.FC<{ label: EngagementSummaryFilter; value: number }> = ({ label, value }) => {
@@ -38,9 +38,9 @@ const EngagementSummaryStrip: React.FC<EngagementSummaryStripProps> = ({ engagem
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatItem label="Total Active" value={stats['Total Active']} />
-        <StatItem label="Completed (YTD)" value={stats['Completed (YTD)']} />
-        <StatItem label="Open Deficiencies" value={stats['Open Deficiencies']} />
+        <StatItem label="In Progress" value={stats['In Progress']} />
         <StatItem label="Under Review" value={stats['Under Review']} />
+        <StatItem label="Completed (YTD)" value={stats['Completed (YTD)']} />
     </div>
   );
 };

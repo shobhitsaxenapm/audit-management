@@ -30,7 +30,6 @@ const EngagementTable: React.FC<EngagementTableProps> = ({ engagements, sortConf
     { key: 'name', label: 'Engagement' },
     { key: 'type', label: 'Type' },
     { key: 'period', label: 'Period' },
-    { key: 'totalDeficiencies', label: 'Total Deficiencies' },
     { key: 'status', label: 'Status' },
   ];
 
@@ -67,9 +66,6 @@ const EngagementTable: React.FC<EngagementTableProps> = ({ engagements, sortConf
                 <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">{eng.name}</td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{eng.type}</td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{eng.period}</td>
-                <td className={`whitespace-nowrap px-3 py-4 text-sm font-semibold ${eng.totalDeficiencies > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                  {eng.totalDeficiencies}
-                </td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><StatusBadge status={eng.status} /></td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                   <button
@@ -77,7 +73,7 @@ const EngagementTable: React.FC<EngagementTableProps> = ({ engagements, sortConf
                       e.stopPropagation(); // prevent row click
                       onMarkAsClosed(eng.id);
                     }}
-                    disabled={eng.status === 'CLOSED'}
+                    disabled={eng.status === 'CLOSED' || eng.status === 'NOT STARTED' || eng.status === 'PLANNING'}
                     className="text-indigo-600 hover:text-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed text-xs font-semibold"
                   >
                     Mark as Closed
@@ -87,7 +83,7 @@ const EngagementTable: React.FC<EngagementTableProps> = ({ engagements, sortConf
             ))
           ) : (
             <tr>
-              <td colSpan={7} className="text-center py-10 text-gray-500">
+              <td colSpan={6} className="text-center py-10 text-gray-500">
                 No engagements match the selected filters.
               </td>
             </tr>

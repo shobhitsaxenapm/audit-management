@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import type { Engagement, EngagementSortConfig, EngagementSortKey, EngagementSummaryFilter, EngagementFilters, NewEngagementData, RACM } from '../types';
+import type { Engagement, EngagementControl, EngagementSortConfig, EngagementSortKey, EngagementSummaryFilter, EngagementFilters, NewEngagementData, RACM } from '../types';
 import EngagementSummaryStrip from './EngagementSummaryStrip';
 import EngagementToolbar from './EngagementToolbar';
 import EngagementTable from './EngagementTable';
@@ -11,11 +11,12 @@ import Toast from './Toast';
 interface EngagementListPageProps {
     engagements: Engagement[];
     setEngagements: React.Dispatch<React.SetStateAction<Engagement[]>>;
+    controls: EngagementControl[];
     racms: RACM[];
     onSelectEngagement: (engagement: Engagement) => void;
 }
 
-const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, setEngagements, racms, onSelectEngagement }) => {
+const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, setEngagements, controls, racms, onSelectEngagement }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeSummaryFilter, setActiveSummaryFilter] = useState<EngagementSummaryFilter | null>(null);
     const [sortConfig, setSortConfig] = useState<EngagementSortConfig>({ key: 'name', direction: 'ascending' });
@@ -39,7 +40,7 @@ const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, se
                 switch (activeSummaryFilter) {
                     case 'Total Active': return eng.status !== 'CLOSED';
                     case 'Completed (YTD)': return eng.status === 'CLOSED';
-                    case 'Open Deficiencies': return eng.totalDeficiencies > 0;
+                    case 'In Progress': return eng.status === 'IN PROGRESS';
                     // FIX: Changed 'Pending Reviews' to 'Under Review' to match EngagementSummaryFilter type.
                     // FIX: Changed status check from 'REVIEW PENDING' to 'UNDER REVIEW' to match EngagementStatus type.
                     case 'Under Review': return eng.status === 'UNDER REVIEW';
@@ -92,8 +93,17 @@ const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, se
     };
 
     const handleMarkAsClosed = useCallback((id: number) => {
-        setEngagements(prev => prev.map(e => e.id === id ? { ...e, status: 'CLOSED' } : e));
-    }, [setEngagements]);
+        // Validate: all controls must be Concluded before closing
+        const engagementControls = controls; // In production, filter by engagement ID
+        const unconcluded = engagementControls.filter(c => c.status !== 'Concluded');
+        if (unconcluded.length > 0) {
+            alert(`Cannot close engagement: ${unconcluded.length} control(s) are not yet Concluded.\n\nAll controls must complete testing and review before the engagement can be closed.`);
+            return;
+        }
+        if (window.confirm('Are you sure you want to close this engagement? This action will lock all controls.')) {
+            setEngagements(prev => prev.map(e => e.id === id ? { ...e, status: 'CLOSED' as const } : e));
+        }
+    }, [setEngagements, controls]);
 
     const handleCreateEngagement = (data: NewEngagementData) => {
         const getPeriod = (startDate: string) => {

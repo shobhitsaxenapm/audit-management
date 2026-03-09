@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Engagement } from '../types';
 import { ChevronRightIcon, CopyIcon } from './icons/Icons';
 
@@ -7,12 +6,15 @@ interface EngagementWorkspaceHeaderProps {
   engagement: Engagement;
   onBack: () => void;
   isClosed: boolean;
+  canClose: boolean;
+  onCloseEngagement: () => void;
+  closeDisabledReason?: string;
+  onExportReport?: () => void;
 }
 
 const EngagementStatusBadge: React.FC<{ status: Engagement['status'], type: string }> = ({ status, type }) => {
     const typeColor = "bg-gray-800 text-white";
     
-    // FIX: Added 'PLANNING' status to support its use for new engagements.
     const statusClasses: Record<Engagement['status'], string> = {
         "IN PROGRESS": "bg-blue-100 text-blue-800",
         "UNDER REVIEW": "bg-gray-200 text-gray-800",
@@ -31,7 +33,20 @@ const EngagementStatusBadge: React.FC<{ status: Engagement['status'], type: stri
     );
 }
 
-const EngagementWorkspaceHeader: React.FC<EngagementWorkspaceHeaderProps> = ({ engagement, onBack, isClosed }) => {
+const EngagementWorkspaceHeader: React.FC<EngagementWorkspaceHeaderProps> = ({ engagement, onBack, isClosed, canClose, onCloseEngagement, closeDisabledReason, onExportReport }) => {
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <>
       <div className="flex items-center text-sm sm:text-base text-gray-500 mb-4">
@@ -68,15 +83,52 @@ const EngagementWorkspaceHeader: React.FC<EngagementWorkspaceHeaderProps> = ({ e
                     <option>FY 2025</option>
                   </select>
                </div>
-               <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md">
-                   <CopyIcon className="h-5 w-5" />
-               </button>
-               <button 
-                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={isClosed}
-               >
-                   {isClosed ? 'Engagement Closed' : 'Close Engagement'}
-               </button>
+               
+               <div className="relative" ref={dropdownRef}>
+                 <button 
+                   onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                   className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
+                 >
+                   Export Reports
+                   <svg className={`w-4 h-4 text-gray-500 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                 </button>
+                 {isExportMenuOpen && (
+                   <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                     <div className="py-1" role="menu">
+                       <button
+                         onClick={() => { setIsExportMenuOpen(false); onExportReport?.(); }}
+                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                         role="menuitem"
+                       >
+                         Engagement Report
+                       </button>
+                       <button
+                         disabled
+                         className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center justify-between"
+                         role="menuitem"
+                       >
+                         Exception Summary
+                         <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+                       </button>
+                     </div>
+                   </div>
+                 )}
+               </div>
+
+               <div className="relative group">
+                 <button 
+                  onClick={onCloseEngagement}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={isClosed || !canClose}
+                 >
+                    {isClosed ? 'Engagement Closed' : 'Close Engagement'}
+                 </button>
+                 {!isClosed && !canClose && closeDisabledReason && (
+                   <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                     {closeDisabledReason}
+                   </div>
+                 )}
+               </div>
           </div>
       </div>
     </>

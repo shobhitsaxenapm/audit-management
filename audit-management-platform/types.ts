@@ -74,7 +74,7 @@ export interface EngagementSortConfig {
   direction: SortDirection;
 }
 
-export type EngagementSummaryFilter = "Total Active" | "Completed (YTD)" | "Open Deficiencies" | "Under Review";
+export type EngagementSummaryFilter = "Total Active" | "In Progress" | "Under Review" | "Completed (YTD)";
 
 export interface EngagementFilters {
     types: string[];
@@ -84,8 +84,9 @@ export interface EngagementFilters {
 
 
 // Engagement Workspace Types
-export type ControlStatus = 'Concluded' | 'In Testing' | 'Not Started' | 'Pending Review' | 'Planning';
+export type ControlStatus = 'Not Started' | 'Evidence Collection' | 'Testing In Progress' | 'Pending Review' | 'Concluded';
 export type ControlConclusion = 'Effective' | 'Ineffective';
+export type SystemResultValue = 'Effective' | 'Ineffective' | null;
 
 export interface EngagementControl {
   id: number;
@@ -95,12 +96,14 @@ export interface EngagementControl {
   key: boolean;
   status: ControlStatus;
   samplesTested: string;
+  testedSamples: number;
+  totalSamples: number;
   exceptions: number;
+  systemResult: SystemResultValue;
   conclusion: ControlConclusion | null;
   lastUpdated: string;
   submittedBy?: string;
   submittedOn?: string;
-  // NEW properties for Test Script info
   process?: string;
   frequency?: string;
 }
@@ -112,7 +115,7 @@ export interface EngagementControlSortConfig {
     direction: SortDirection;
 }
 
-export type EngagementControlSummaryFilter = 'Key Controls' | 'In Progress' | 'Pending Review' | 'Concluded' | 'Deficient';
+export type EngagementControlSummaryFilter = 'Key Controls' | 'Work In Progress' | 'Pending Review' | 'Concluded' | 'Deficient';
 
 // Control Detail Panel Types
 export interface ControlOverview {
@@ -160,13 +163,40 @@ export interface TestScript {
     rules: TestScriptRule[];
 }
 
-// FIX: Added TestScriptAttribute to properly type legacy control attributes.
 export interface TestScriptAttribute {
   attributeId: number;
   name: string;
   mandatory: boolean;
   ruleLogic: (sample: any) => boolean;
 }
+
+export interface ControlDataSource {
+  id: string;
+  filename: string;
+  type: 'excel' | 'csv' | 'pdf' | 'other';
+  uploadDate: string;
+  size: number;
+  records?: Record<string, any>[]; // Mock parsed data for Excel/CSV
+  matchingKey?: string; // Configured matching key for this dataset
+  fileUrl?: string; // For PDFs
+}
+
+// Sample Evidence — per-sample document evidence
+export interface SampleEvidence {
+  id: string;
+  evidenceType: string;
+  description: string;
+  filename: string | null;
+  fileUrl: string | null;
+  uploadDate: string | null;
+}
+
+export const DEFAULT_EVIDENCE_TYPES: Omit<SampleEvidence, 'id'>[] = [
+  { evidenceType: 'Estimate PDF', description: 'Estimate document containing expected publication details', filename: null, fileUrl: null, uploadDate: null },
+  { evidenceType: 'Media Invoice PDF', description: 'Agency invoice document', filename: null, fileUrl: null, uploadDate: null },
+  { evidenceType: 'Publication Invoice PDF', description: 'Vendor invoice with supporting pages', filename: null, fileUrl: null, uploadDate: null },
+  { evidenceType: 'Supporting Document', description: 'Additional supporting evidence', filename: null, fileUrl: null, uploadDate: null },
+];
 
 export interface ControlFullDetail {
     overview: ControlOverview;
@@ -216,4 +246,20 @@ export interface AuditTrailEntry {
     user: string;
     action: string;
     details?: string;
+}
+
+// Data Viewer Types
+export type DataViewerFileType = 'csv' | 'xlsx' | 'pdf' | 'png' | 'jpg';
+export type DataViewerSourceType = 'Uploaded Dataset' | 'System Dataset' | 'Population File';
+
+export interface DataViewerDataset {
+    id: string;
+    name: string;
+    sourceType: DataViewerSourceType;
+    fileType: DataViewerFileType;
+    totalRows: number;
+    totalColumns: number;
+    columns: string[];
+    rows: Record<string, any>[];
+    idColumn?: string; // column used for sample-context highlighting
 }

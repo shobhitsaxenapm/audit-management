@@ -17,29 +17,28 @@ const calculateEngagementStatus = (controlsForEngagement: EngagementControl[]): 
     return 'NOT STARTED';
   }
 
-  if (controlsForEngagement.some(c => c.status === 'Pending Review')) {
-    return 'UNDER REVIEW';
-  }
-  if (controlsForEngagement.some(c => c.status === 'In Testing')) {
-    return 'IN PROGRESS';
-  }
+  // All concluded → CLOSED
   if (controlsForEngagement.every(c => c.status === 'Concluded')) {
     return 'CLOSED';
   }
-  // If we reach here, no controls are Pending Review or In Testing.
-  // They are a mix of Concluded, Planning, and Not Started.
-  if (controlsForEngagement.some(c => c.status === 'Concluded')) {
-      return 'IN PROGRESS'; // Work has been done, so it's in progress.
+  // Any under review → UNDER REVIEW
+  if (controlsForEngagement.some(c => c.status === 'Pending Review')) {
+    return 'UNDER REVIEW';
   }
-   if (controlsForEngagement.some(c => c.status === 'Planning')) {
-      return 'PLANNING';
+  // Any in active testing or evidence collection → IN PROGRESS
+  if (controlsForEngagement.some(c => c.status === 'Testing In Progress' || c.status === 'Evidence Collection')) {
+    return 'IN PROGRESS';
+  }
+  // Mix of Concluded and Not Started → IN PROGRESS (some work done)
+  if (controlsForEngagement.some(c => c.status === 'Concluded')) {
+    return 'IN PROGRESS';
   }
   
   return 'NOT STARTED'; // All must be 'Not Started'
 };
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('engagements');
+  const [currentPage, setCurrentPage] = useState<Page>('racm');
   const [selectedRACM, setSelectedRACM] = useState<RACM | null>(null);
   const [selectedEngagement, setSelectedEngagement] = useState<Engagement | null>(null);
   const [selectedControlForTesting, setSelectedControlForTesting] = useState<EngagementControl | null>(null);
@@ -151,17 +150,24 @@ export default function App() {
 
     if (currentPage === 'engagements') {
       if (selectedEngagement) {
+        const handleCloseEngagement = () => {
+          const updatedEngagement = { ...selectedEngagement, status: 'CLOSED' as const };
+          setSelectedEngagement(updatedEngagement);
+          setEngagements(prev => prev.map(e => e.id === updatedEngagement.id ? updatedEngagement : e));
+        };
         return <EngagementWorkspacePage 
                   engagement={selectedEngagement}
                   controls={controls}
                   onBack={handleReturnToEngagementList} 
                   onPerformTesting={handlePerformTesting}
                   onReviewControl={handleReviewControl}
+                  onCloseEngagement={handleCloseEngagement}
                />;
       }
       return <EngagementListPage 
                 engagements={engagements}
                 setEngagements={setEngagements}
+                controls={controls}
                 racms={racmData}
                 onSelectEngagement={handleSelectEngagement} 
              />;
