@@ -66,7 +66,7 @@ const RuleLogicTooltip: React.FC<{ logic: RuleLogic }> = ({ logic }) => {
 const ControlTestingWorkflow: React.FC<{
   stages: { id: string; name: string; state: "completed" | "current" | "not_started" }[];
 }> = ({ stages }) => (
-  <div className="mb-8 border border-gray-200 bg-white rounded-lg shadow-sm">
+  <div className="sticky top-0 z-40 mb-8 border border-gray-200 bg-white/95 backdrop-blur-sm rounded-lg shadow-md">
     <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex flex-col md:flex-row md:justify-between md:items-center rounded-t-lg">
       <h3 className="text-sm font-semibold text-gray-900">
         Workflow Progress
