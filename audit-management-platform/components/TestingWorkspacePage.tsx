@@ -67,42 +67,19 @@ const TestScriptHeader: React.FC<{
   control: EngagementControl;
   controlDetails: ControlFullDetail;
 }> = ({ control, controlDetails }) => (
-  <div className="mb-6">
-    <div className="flex justify-between items-start">
-      <div>
-        <h3 className="text-base font-semibold text-gray-800 mb-2">
-          Control & Test Script Information
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-          <div className="font-medium text-gray-500">Control ID:</div>
-          <div className="text-gray-900 font-semibold">{control.controlId}</div>
-          <div className="font-medium text-gray-500">Control Name:</div>
-          <div className="col-span-2 text-gray-900">{control.controlName}</div>
-          {controlDetails.testScript && (
-            <>
-              <div className="font-medium text-gray-500">Process:</div>
-              <div className="text-gray-900">{control.process || "N/A"}</div>
-              <div className="font-medium text-gray-500">Frequency:</div>
-              <div className="text-gray-900">{control.frequency || "N/A"}</div>
-              <div className="font-medium text-gray-500">Test Script Ver:</div>
-              <div className="text-gray-900">
-                {controlDetails.testScript?.version || "N/A"}
-              </div>
-              <div className="font-medium text-gray-500">Generated Date:</div>
-              <div className="text-gray-900">
-                {controlDetails.testScript?.generatedDate || "N/A"}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+  <div className="mb-8 border border-gray-200 bg-white rounded-lg shadow-sm">
+    {/* A. HEADER ROW */}
+    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between md:items-center rounded-t-lg">
+      <h3 className="text-base font-semibold text-gray-900">
+        Control & Test Script Information
+      </h3>
       {controlDetails.testScript && (
-        <div className="flex gap-2">
+        <div className="mt-4 md:mt-0 flex items-center gap-3">
           <button
             onClick={() =>
               window.open("/Sample-Test-Script-Cash-and-Bank.xlsx", "_blank")
             }
-            className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
           >
             View Test Script
           </button>
@@ -115,12 +92,55 @@ const TestScriptHeader: React.FC<{
               a.click();
               document.body.removeChild(a);
             }}
-            className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
           >
             Download Test Script
           </button>
         </div>
       )}
+    </div>
+
+    {/* B. METADATA GRID */}
+    <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+        {/* Row 1 */}
+        <div className="grid grid-cols-[150px_1fr] gap-x-4 items-start">
+          <div className="text-sm font-medium text-gray-500">Control ID</div>
+          <div className="text-sm font-medium text-gray-900">{control.controlId}</div>
+        </div>
+        {controlDetails.testScript && (
+          <div className="grid grid-cols-[150px_1fr] gap-x-4 items-start">
+            <div className="text-sm font-medium text-gray-500">Process</div>
+            <div className="text-sm font-medium text-gray-900">{control.process || "N/A"}</div>
+          </div>
+        )}
+        
+        {/* Row 2 */}
+        <div className="grid grid-cols-[150px_1fr] gap-x-4 items-start">
+          <div className="text-sm font-medium text-gray-500">Control Name</div>
+          <div className="text-sm font-medium text-gray-900">{control.controlName}</div>
+        </div>
+        {controlDetails.testScript && (
+          <div className="grid grid-cols-[150px_1fr] gap-x-4 items-start">
+            <div className="text-sm font-medium text-gray-500">Frequency</div>
+            <div className="text-sm font-medium text-gray-900">{control.frequency || "N/A"}</div>
+          </div>
+        )}
+
+        {/* Row 3 */}
+        {controlDetails.testScript && (
+          <>
+            <div className="grid grid-cols-[150px_1fr] gap-x-4 items-start">
+              <div className="text-sm font-medium text-gray-500">Test Script Version</div>
+              <div className="text-sm font-medium text-gray-900">{controlDetails.testScript?.version || "N/A"}</div>
+            </div>
+            <div className="grid grid-cols-[150px_1fr] gap-x-4 items-start">
+              <div className="text-sm font-medium text-gray-500">Generated Date</div>
+              <div className="text-sm font-medium text-gray-900">{controlDetails.testScript?.generatedDate || "N/A"}</div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   </div>
 );

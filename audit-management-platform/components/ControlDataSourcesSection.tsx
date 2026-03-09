@@ -153,8 +153,8 @@ const ControlDataSourcesSection: React.FC<ControlDataSourcesSectionProps> = ({
   };
 
   return (
-    <div className="mb-8 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <div className="mb-6 px-6 py-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div className="flex items-center justify-between mb-2">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Control Data Sources</h3>
           <p className="text-sm text-gray-500">
