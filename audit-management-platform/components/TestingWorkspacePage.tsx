@@ -66,63 +66,36 @@ const RuleLogicTooltip: React.FC<{ logic: RuleLogic }> = ({ logic }) => {
 const ControlTestingWorkflow: React.FC<{
   stages: { id: string; name: string; state: "completed" | "current" | "not_started" }[];
 }> = ({ stages }) => (
-  <div className="sticky top-0 z-40 mb-8 border border-gray-200 bg-white/95 backdrop-blur-sm rounded-lg shadow-md">
-    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex flex-col md:flex-row md:justify-between md:items-center rounded-t-lg">
-      <h3 className="text-sm font-semibold text-gray-900">
-        Workflow Progress
-      </h3>
-    </div>
-    <div className="px-8 py-8 relative">
-      <div className="absolute left-[10%] right-[10%] top-1/2 h-0.5 bg-gray-200 -z-10 -translate-y-1/2" />
-      <div className="flex items-center justify-between w-full">
-        {stages.map((stage, idx) => (
-          <div key={idx} className="flex flex-col items-center gap-3 bg-white flex-1 relative z-10 w-24">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center border-2 
-                ${
-                  stage.state === "completed"
-                    ? "bg-green-500 border-green-500 text-white"
-                    : stage.state === "current"
-                    ? "bg-blue-600 border-blue-600"
-                    : "bg-white border-gray-300"
-                }
-              `}
-            >
-              {stage.state === "completed" ? (
-                <svg
-                  className="w-5 h-5 flex-shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={3}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : stage.state === "current" ? (
-                <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
-              ) : null}
-            </div>
-            <span
-              className={`text-xs text-center font-medium
-                ${
-                  stage.state === "completed"
-                    ? "text-gray-900"
-                    : stage.state === "current"
-                    ? "text-blue-700 font-bold"
-                    : "text-gray-500"
-                }
+  <div className="hidden lg:flex items-center ml-6 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200 shadow-sm">
+    {stages.map((stage, idx) => (
+      <React.Fragment key={idx}>
+        <div className="flex items-center gap-1.5">
+          <div
+            className={`w-4 h-4 rounded-full flex items-center justify-center border
+              ${
+                stage.state === "completed"
+                  ? "bg-green-500 border-green-500 text-white"
+                  : stage.state === "current"
+                  ? "bg-blue-600 border-blue-600"
+                  : "bg-white border-gray-300"
+              }
             `}
-            >
-              {stage.name}
-            </span>
+          >
+            {stage.state === "completed" ? (
+              <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : stage.state === "current" ? (
+              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+            ) : null}
           </div>
-        ))}
-      </div>
-    </div>
+          <span className={`text-xs font-medium ${stage.state === "current" ? "text-gray-900" : "text-gray-500"}`}>
+            {stage.name}
+          </span>
+        </div>
+        {idx < stages.length - 1 && <div className="w-3 h-px bg-gray-300 mx-2"></div>}
+      </React.Fragment>
+    ))}
   </div>
 );
 
@@ -921,14 +894,15 @@ const TestingWorkspacePage: React.FC<{
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900">
+          <div className="flex items-center gap-3 w-full lg:w-auto overflow-hidden">
+            <h2 className="text-xl font-bold text-gray-900 truncate shrink-0 max-w-[400px]">
               {control.controlId}: {control.controlName}
             </h2>
+            <ControlTestingWorkflow stages={workflowStages} />
             {testingStep === 2 && (
               <button
                 onClick={() => setTestingStep(1)}
-                className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1 shrink-0 ml-auto lg:ml-0"
               >
                 ← Back to Evidence
               </button>
@@ -962,7 +936,6 @@ const TestingWorkspacePage: React.FC<{
 
         <main className="flex-grow p-6 overflow-y-auto">
           <TestScriptHeader control={control} controlDetails={controlDetails} />
-          <ControlTestingWorkflow stages={workflowStages} />
 
           {/* ========================= STEP 1: Evidence Collection ========================= */}
           {testingStep === 1 && (
