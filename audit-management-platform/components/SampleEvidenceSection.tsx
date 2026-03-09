@@ -1,16 +1,16 @@
 import React, { useRef } from 'react';
-import { SampleEvidence } from '../types';
+import { EvidenceModel } from '../types';
 import { UploadIcon, EyeIcon, TrashIcon } from './icons/Icons';
 
-interface SampleEvidenceSectionProps {
-  evidence: SampleEvidence[];
+interface EvidenceModelSectionProps {
+  evidence: EvidenceModel[];
   onUpload: (evidenceId: string, file: File) => void;
   onReplace: (evidenceId: string, file: File) => void;
-  onView: (evidence: SampleEvidence) => void;
+  onView: (evidence: EvidenceModel) => void;
   isLocked: boolean;
 }
 
-const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
+const EvidenceModelSection: React.FC<EvidenceModelSectionProps> = ({
   evidence,
   onUpload,
   onReplace,
@@ -42,11 +42,11 @@ const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
     isReplacingRef.current = false;
   };
 
-  const handleDownload = (ev: SampleEvidence) => {
-    if (!ev.fileUrl) return;
+  const handleDownload = (ev: EvidenceModel) => {
+    if (!ev.storageReference) return;
     const a = document.createElement('a');
-    a.href = ev.fileUrl;
-    a.download = ev.filename || 'document';
+    a.href = ev.storageReference;
+    a.download = ev.fileName || 'document';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -75,14 +75,14 @@ const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {evidence.map((ev) => {
-              const isUploaded = !!ev.filename;
+              const isUploaded = !!ev.fileName;
               return (
-                <tr key={ev.id}>
+                <tr key={ev.evidenceId}>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
                     {ev.evidenceType}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
-                    {ev.description}
+                    {ev.evidenceName}
                   </td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
                     {isUploaded ? (
@@ -95,8 +95,8 @@ const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
                       </span>
                     )}
                     {isUploaded && (
-                      <span className="block text-xs text-gray-400 mt-0.5 truncate max-w-[180px]" title={ev.filename || ''}>
-                        {ev.filename}
+                      <span className="block text-xs text-gray-400 mt-0.5 truncate max-w-[180px]" title={ev.fileName || ''}>
+                        {ev.fileName}
                       </span>
                     )}
                   </td>
@@ -104,7 +104,7 @@ const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
                     {isUploaded ? (
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => !isLocked && handleFileSelect(ev.id, true)}
+                          onClick={() => !isLocked && handleFileSelect(ev.evidenceId, true)}
                           disabled={isLocked}
                           className="text-gray-600 hover:text-gray-900 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -125,7 +125,7 @@ const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
                       </div>
                     ) : (
                       <button
-                        onClick={() => !isLocked && handleFileSelect(ev.id, false)}
+                        onClick={() => !isLocked && handleFileSelect(ev.evidenceId, false)}
                         disabled={isLocked}
                         className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -144,4 +144,4 @@ const SampleEvidenceSection: React.FC<SampleEvidenceSectionProps> = ({
   );
 };
 
-export default SampleEvidenceSection;
+export default EvidenceModelSection;

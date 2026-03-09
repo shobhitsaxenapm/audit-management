@@ -14,8 +14,10 @@ import type {
   RuleLogic,
   TestingResult,
   ControlDataSource,
-  SampleEvidence,
+  EvidenceModel,
   DataViewerDataset,
+  SampleModel,
+  BulkUploadSession,
 } from "../types";
 import { DEFAULT_EVIDENCE_TYPES } from "../types";
 import { detailedControlData } from "../constants";
@@ -30,6 +32,7 @@ import SampleEvidenceSection from "./SampleEvidenceSection";
 import DataViewerPanel from "./DataViewerPanel";
 import TestingReportModal from "./TestingReportModal";
 import SampleDetailReportModal from "./SampleDetailReportModal";
+import BulkEvidenceUpload from "./BulkEvidenceUpload";
 import { dataViewerDatasets, datasetNameToId } from "../dataViewerData";
 
 // --- HELPER & SUB-COMPONENTS (scoped to this file) ---
@@ -355,52 +358,70 @@ const TestingWorkspacePage: React.FC<{
 
   const isDynamicTestScript = !!controlDetails?.testScript;
 
-  const [resultsState, setResultsState] = useState<AllSamplesResultsState>(
-    () => {
-      const initialState: AllSamplesResultsState = {};
-      if (controlDetails && isDynamicTestScript) {
-        controlDetails.samples.forEach((sample) => {
-          initialState[sample.sampleId] = {};
-          controlDetails.testScript?.rules.forEach((rule) => {
-            initialState[sample.sampleId][rule.id] = {
-              override: null,
-              comment: "",
-              evidence: "",
-            };
-          });
-        });
+    // Deep state representing the local working copy of all samples
+  const [localSamples, setLocalSamples] = useState<SampleModel[]>(() => {
+    if (!controlDetails) return [];
+    
+    return controlDetails.samples.map(sample => {
+      // 1. Initialize Evidence if missing
+      let evidence = [...(sample.evidence || [])];
+      if (evidence.length === 0) {
+        evidence = DEFAULT_EVIDENCE_TYPES.map((tmpl, idx) => ({
+          ...tmpl,
+          evidenceId: `${sample.sampleId}-ev-${idx}`,
+          sampleId: sample.sampleId
+        }));
       }
-      return initialState;
-    },
-  );
 
-  const [legacyResultsState, setLegacyResultsState] = useState<
-    Record<string, Record<number, TestingResult>>
-  >(() => {
-    const initialState: Record<string, Record<number, TestingResult>> = {};
-    if (controlDetails && !isDynamicTestScript && controlDetails.attributes) {
-      controlDetails.samples.forEach((sample) => {
-        initialState[sample.sampleId] = {};
-        controlDetails.attributes!.forEach((attr) => {
-          initialState[sample.sampleId][attr.attributeId] = {
-            auditorResult: undefined,
-            comment: "",
-            evidence: "",
-          };
-        });
-      });
-    }
-    return initialState;
+      // 2. Initialize AttributeResults if missing
+      let attributeResults = [...(sample.attributeResults || [])];
+      if (attributeResults.length === 0) {
+        if (isDynamicTestScript && controlDetails.testScript) {
+          attributeResults = controlDetails.testScript.rules.map(r => ({
+            attributeResultId: `${sample.sampleId}-${r.id}`,
+            sampleId: sample.sampleId,
+            controlInstanceId: sample.controlInstanceId,
+            attributeId: r.id,
+            attributeName: r.description || r.name,
+            expectedValue: r.logic.expectedValue,
+            actualValue: null,
+            readinessStatus: "pending",
+            systemResult: "NOT_APPLICABLE",
+            auditorResult: null,
+            comments: "",
+            evidenceReferences: [],
+            testedAt: ""
+          }));
+        } else if (controlDetails.attributes) {
+          attributeResults = controlDetails.attributes.map(a => ({
+            attributeResultId: `${sample.sampleId}-${a.attributeId}`,
+            sampleId: sample.sampleId,
+            controlInstanceId: sample.controlInstanceId,
+            attributeId: a.attributeId,
+            attributeName: a.name,
+            expectedValue: true,
+            actualValue: null,
+            readinessStatus: "pending",
+            systemResult: "NOT_APPLICABLE",
+            auditorResult: null,
+            comments: "",
+            evidenceReferences: [],
+            testedAt: ""
+          }));
+        }
+      }
+
+      return {
+        ...sample,
+        evidence,
+        attributeResults
+      };
+    });
   });
 
   const [currentSampleIndex, setCurrentSampleIndex] = useState(0);
-  const [overallStatus, setOverallStatus] = useState<
-    "In Progress" | "Submitted"
-  >("In Progress");
+  const [overallStatus, setOverallStatus] = useState<"In Progress" | "Submitted">("In Progress");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [finalSampleDecisions, setFinalSampleDecisions] = useState<
-    Record<string, AuditorOverride>
-  >({});
   
   // NEW STATE: Control Data Sources
   const [dataSources, setDataSources] = useState<ControlDataSource[]>([]);
@@ -409,6 +430,7 @@ const TestingWorkspacePage: React.FC<{
   const [viewerHighlightId, setViewerHighlightId] = useState<string | undefined>(undefined);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSampleReportModal, setShowSampleReportModal] = useState(false);
+  const [bulkUploadSession, setBulkUploadSession] = useState<BulkUploadSession | null>(null);
 
   const openDataViewer = useCallback((ds: ControlDataSource, sampleKeyValue?: string) => {
     const datasetId = datasetNameToId[ds.filename] || datasetNameToId[controlDetails?.snapshot?.datasetName || ''];
@@ -416,7 +438,6 @@ const TestingWorkspacePage: React.FC<{
       setViewerDataset(dataViewerDatasets[datasetId]);
       setViewerHighlightId(sampleKeyValue);
     } else {
-      // Fallback to the first available dataset if filename doesn't match
       const fallbackKey = Object.keys(dataViewerDatasets)[0];
       if (fallbackKey) {
         setViewerDataset(dataViewerDatasets[fallbackKey]);
@@ -427,68 +448,87 @@ const TestingWorkspacePage: React.FC<{
     }
   }, [controlDetails]);
 
-  // NEW STATE: Per-sample evidence
-  const [sampleEvidence, setSampleEvidence] = useState<Record<string, SampleEvidence[]>>(() => {
-    const initial: Record<string, SampleEvidence[]> = {};
-    if (controlDetails) {
-      controlDetails.samples.forEach((sample: any) => {
-        initial[sample.sampleId] = DEFAULT_EVIDENCE_TYPES.map((tmpl, idx) => ({
-          ...tmpl,
-          id: `${sample.sampleId}-ev-${idx}`,
-        }));
-      });
-    }
-    return initial;
-  });
-  const [evidenceViewerUrl, setEvidenceViewerUrl] = useState<{ url: string; filename: string } | null>(null);
-
-  // NEW STATE: 2-Step flow
+  const [evidenceViewerUrl, setEvidenceViewerUrl] = useState<{ url: string; fileName: string } | null>(null);
   const [testingStep, setTestingStep] = useState<1 | 2>(1);
 
-  const handleEvidenceUpload = useCallback((evidenceId: string, file: File) => {
-    const sampleId = controlDetails!.samples[currentSampleIndex].sampleId;
-    const fileUrl = URL.createObjectURL(file);
-    setSampleEvidence(prev => ({
-      ...prev,
-      [sampleId]: prev[sampleId].map(ev =>
-        ev.id === evidenceId
-          ? { ...ev, filename: file.name, fileUrl, uploadDate: new Date().toLocaleDateString() }
-          : ev
-      ),
-    }));
-  }, [controlDetails, currentSampleIndex]);
+  const currentSample = localSamples[currentSampleIndex];
 
-  const handleEvidenceView = useCallback((ev: SampleEvidence) => {
-    if (ev.fileUrl) {
-      setEvidenceViewerUrl({ url: ev.fileUrl, filename: ev.filename || 'Document' });
+  // --- UPDATERS ---
+  const handleApplyMapping = useCallback((session: BulkUploadSession) => {
+    const mappedFiles = session.files.filter(f => f.mappingStatus === 'MAPPED');
+    
+    setLocalSamples(prevSamples => prevSamples.map(sample => {
+      const filesForSample = mappedFiles.filter(f => f.mappedSampleId === sample.sampleId);
+      if (filesForSample.length === 0) return sample;
+
+      const newEvidence = sample.evidence.map(slot => {
+        const fileForSlot = filesForSample.find(f => f.mappedEvidenceId === slot.evidenceId);
+        if (fileForSlot && fileForSlot.storageReference) {
+          return {
+            ...slot,
+            fileName: fileForSlot.fileName,
+            storageReference: fileForSlot.storageReference,
+            uploadedAt: new Date().toLocaleDateString()
+          };
+        }
+        return slot;
+      });
+
+      return {
+        ...sample,
+        evidence: newEvidence
+      };
+    }));
+
+    setBulkUploadSession(null);
+  }, []);
+  const handleEvidenceUpload = useCallback((evidenceId: string, file: File) => {
+    if (!currentSample) return;
+    const storageReference = URL.createObjectURL(file);
+    
+    setLocalSamples(prev => prev.map(sample => {
+      if (sample.sampleId === currentSample.sampleId) {
+        return {
+          ...sample,
+          evidence: sample.evidence.map(ev => 
+             ev.evidenceId === evidenceId 
+               ? { ...ev, fileName: file.name, storageReference, uploadedAt: new Date().toLocaleDateString() }
+               : ev
+          )
+        };
+      }
+      return sample;
+    }));
+  }, [currentSample]);
+
+  const handleEvidenceView = useCallback((ev: EvidenceModel) => {
+    if (ev.storageReference) {
+      setEvidenceViewerUrl({ url: ev.storageReference, fileName: ev.fileName || 'Document' });
     }
   }, []);
 
-  // Evidence readiness logic
+  // --- DERIVED STATES ---
   const evidenceReadiness = useMemo(() => {
     const result: Record<string, 'pending' | 'ready'> = {};
-    if (!controlDetails) return result;
-    controlDetails.samples.forEach((sample: any) => {
-      const evList = sampleEvidence[sample.sampleId] || [];
-      const allUploaded = evList.length > 0 && evList.every(ev => !!ev.filename);
+    localSamples.forEach(sample => {
+      const allUploaded = sample.evidence.length > 0 && sample.evidence.every(ev => !!ev.fileName);
       result[sample.sampleId] = allUploaded ? 'ready' : 'pending';
     });
     return result;
-  }, [controlDetails, sampleEvidence]);
+  }, [localSamples]);
+
+  const hasPendingBulkSession = !!bulkUploadSession && bulkUploadSession.files.length > 0;
 
   const allSamplesReady = useMemo(() => {
-    if (!controlDetails || controlDetails.samples.length === 0) return false;
-    return controlDetails.samples.every((s: any) => evidenceReadiness[s.sampleId] === 'ready');
-  }, [controlDetails, evidenceReadiness]);
+    if (hasPendingBulkSession) return false;
+    if (localSamples.length === 0) return false;
+    return localSamples.every(s => evidenceReadiness[s.sampleId] === 'ready');
+  }, [localSamples, evidenceReadiness, hasPendingBulkSession]);
 
-  // Current sample evidence completeness for the tracker
   const currentSampleMissingEvidence = useMemo(() => {
-    if (!controlDetails) return [];
-    const sample = controlDetails.samples[currentSampleIndex];
-    if (!sample) return [];
-    const evList = sampleEvidence[sample.sampleId] || [];
-    return evList.filter(ev => !ev.filename);
-  }, [controlDetails, currentSampleIndex, sampleEvidence]);
+    if (!currentSample) return [];
+    return currentSample.evidence.filter(ev => !ev.fileName);
+  }, [currentSample]);
 
   const handleRunTesting = () => {
     if (!allSamplesReady) {
@@ -506,7 +546,7 @@ const TestingWorkspacePage: React.FC<{
 
   const evaluateRule = useCallback(
     (sample: any, rule: TestScriptRule): RuleExecutionResult => {
-      const actualValue = sample.recordData[rule.logic.fieldName];
+      const actualValue = sample.sourceRowReference[rule.logic.fieldName];
       if (actualValue === undefined || actualValue === null) {
         return {
           systemResult: "NOT_APPLICABLE",
@@ -519,7 +559,6 @@ const TestingWorkspacePage: React.FC<{
         case "===":
           pass = actualValue === rule.logic.expectedValue;
           break;
-        // Add more operators as needed
         default:
           pass = false;
       }
@@ -533,31 +572,25 @@ const TestingWorkspacePage: React.FC<{
   );
 
   const getDynamicSampleFinalStatus = useCallback(
-    (sampleId: string): SampleFinalStatus => {
-      const sample = controlDetails?.samples.find(
-        (s) => s.sampleId === sampleId,
-      );
+    (sample: SampleModel): SampleFinalStatus => {
       const rules = controlDetails?.testScript?.rules;
-      if (!sample || !rules) return "NOT TESTED";
+      if (!rules) return "NOT TESTED";
 
-      const finalAuditorDecision = finalSampleDecisions[sampleId];
-      if (finalAuditorDecision) return finalAuditorDecision;
-
-      const sampleResults = resultsState[sampleId];
-      if (!sampleResults || rules.some((rule) => !sampleResults[rule.id]))
-        return "NOT TESTED";
+      if (sample.auditorResult) return sample.auditorResult;
 
       let isFail = false;
       let isOverridden = false;
       let allNotApplicable = true;
+
       for (const rule of rules) {
         const { systemResult } = evaluateRule(sample, rule);
-        const auditorOverride = sampleResults[rule.id]?.override;
+        const attrResult = sample.attributeResults.find(ar => ar.attributeId === rule.id);
+        const auditorOverride = attrResult?.auditorResult || null;
+        
         if (auditorOverride !== null && auditorOverride !== systemResult)
           isOverridden = true;
 
-        const effectiveResult =
-          auditorOverride !== null ? auditorOverride : systemResult;
+        const effectiveResult = auditorOverride !== null ? auditorOverride : systemResult;
         if (effectiveResult === "FAIL") {
           isFail = true;
           break;
@@ -572,108 +605,110 @@ const TestingWorkspacePage: React.FC<{
       if (isOverridden) return "OVERRIDDEN";
       return "PASS";
     },
-    [controlDetails, resultsState, finalSampleDecisions, evaluateRule],
+    [controlDetails, evaluateRule],
   );
 
   const getLegacySampleFinalStatus = useCallback(
-    (sampleId: string): SampleFinalStatus => {
-      const sample = controlDetails?.samples.find(
-        (s) => s.sampleId === sampleId,
-      );
+    (sample: SampleModel): SampleFinalStatus => {
       const attributes = controlDetails?.attributes;
-      if (!sample || !attributes) return "NOT TESTED";
-
-      const sampleResults = legacyResultsState[sampleId];
-      if (
-        !sampleResults ||
-        attributes.some((attr) => !sampleResults[attr.attributeId])
-      )
-        return "NOT TESTED";
+      if (!attributes) return "NOT TESTED";
 
       let allNotApplicable = true;
-      const hasFailure = attributes.some((attr) => {
-        const result = sampleResults[attr.attributeId];
-        const auditorResult = result.auditorResult;
+      let hasFailure = false;
+
+      for (const attr of attributes) {
+        const attrResult = sample.attributeResults.find(ar => ar.attributeId === attr.attributeId);
+        const auditorResult = attrResult?.auditorResult;
 
         const systemResult = attr.ruleLogic(sample);
-        const effectiveResult =
-          auditorResult !== undefined
-            ? auditorResult
-            : systemResult
-              ? "Pass"
-              : "Fail";
+        const effectiveResult = auditorResult !== undefined && auditorResult !== null
+          ? auditorResult
+          : systemResult ? "PASS" : "FAIL";
 
-        if (effectiveResult !== "Not Applicable") {
+        if (effectiveResult !== "NOT_APPLICABLE") {
           allNotApplicable = false;
         }
 
-        if (effectiveResult === "Fail") return true;
-        return false;
-      });
+        if (effectiveResult === "FAIL") {
+            hasFailure = true;
+            break;
+        }
+      }
 
       if (hasFailure) return "FAIL";
       if (allNotApplicable) return "NOT_APPLICABLE";
       return "PASS";
     },
-    [controlDetails, legacyResultsState],
+    [controlDetails],
   );
 
   const sampleStatuses = useMemo(() => {
     const statuses: Record<string, SampleFinalStatus> = {};
-    if (!controlDetails) return statuses;
+    const statusFn = isDynamicTestScript ? getDynamicSampleFinalStatus : getLegacySampleFinalStatus;
 
-    const statusFn = isDynamicTestScript
-      ? getDynamicSampleFinalStatus
-      : getLegacySampleFinalStatus;
-
-    controlDetails.samples.forEach((s) => {
-      statuses[s.sampleId] = statusFn(s.sampleId);
+    localSamples.forEach((s) => {
+      statuses[s.sampleId] = statusFn(s);
     });
     return statuses;
-  }, [
-    controlDetails,
-    isDynamicTestScript,
-    getDynamicSampleFinalStatus,
-    getLegacySampleFinalStatus,
-  ]);
+  }, [localSamples, isDynamicTestScript, getDynamicSampleFinalStatus, getLegacySampleFinalStatus]);
 
   const summary: TestingSummary = useMemo(() => {
     const statuses = Object.values(sampleStatuses);
     const total = statuses.length;
-    const notTested = statuses.filter((s) => s === "NOT TESTED").length;
-    const tested = total - notTested;
+    let notTested = 0;
+    
+    // Check if evidence is ready, if not, consider NOT TESTED
+    localSamples.forEach(sample => {
+       if (evidenceReadiness[sample.sampleId] !== 'ready') {
+           notTested++;
+       }
+    });
+
     const failed = statuses.filter((s) => s === "FAIL").length;
     const notApplicable = statuses.filter((s) => s === "NOT_APPLICABLE").length;
-    const passed = tested - failed - notApplicable;
+    const tested = total - notTested;
+    const passed = statuses.filter(s => s === "PASS" || s === "OVERRIDDEN").length;
+
     return { total, tested, passed, failed, notApplicable, notTested };
-  }, [sampleStatuses]);
+  }, [sampleStatuses, localSamples, evidenceReadiness]);
 
   const handleUpdateRuleResult = (ruleId: number, newResultData: any) => {
-    const sampleId = controlDetails!.samples[currentSampleIndex].sampleId;
-    setResultsState((prev) => ({
-      ...prev,
-      [sampleId]: {
-        ...prev[sampleId],
-        [ruleId]: { ...prev[sampleId][ruleId], ...newResultData },
-      },
+    setLocalSamples(prev => prev.map(sample => {
+      if (sample.sampleId === currentSample?.sampleId) {
+        return {
+          ...sample,
+          attributeResults: sample.attributeResults.map(ar => 
+             ar.attributeId === ruleId ? { ...ar, auditorResult: newResultData.override !== undefined ? newResultData.override : ar.auditorResult, comments: newResultData.comment !== undefined ? newResultData.comment : ar.comments } : ar
+          )
+        };
+      }
+      return sample;
     }));
   };
 
-  const handleUpdateLegacyResult = (
-    sampleId: string,
-    attributeId: number,
-    newResultData: Partial<TestingResult>,
-  ) => {
-    setLegacyResultsState((prev) => ({
-      ...prev,
-      [sampleId]: {
-        ...prev[sampleId],
-        [attributeId]: {
-          ...(prev[sampleId]?.[attributeId] || {}),
-          ...newResultData,
-        },
-      },
+  const handleUpdateLegacyResult = (sampleId: string, attributeId: number, newResultData: any) => {
+    setLocalSamples(prev => prev.map(sample => {
+      if (sample.sampleId === sampleId) {
+        return {
+          ...sample,
+          attributeResults: sample.attributeResults.map(ar => 
+             ar.attributeId === attributeId 
+             ? { ...ar, auditorResult: newResultData.auditorResult !== undefined ? newResultData.auditorResult : ar.auditorResult, comments: newResultData.comment !== undefined ? newResultData.comment : ar.comments } 
+             : ar
+          )
+        };
+      }
+      return sample;
     }));
+  };
+
+  const handleSampleFinalDecision = (sampleId: string, decision: AuditorOverride) => {
+     setLocalSamples(prev => prev.map(sample => {
+         if (sample.sampleId === sampleId) {
+             return { ...sample, auditorResult: decision || null };
+         }
+         return sample;
+     }));
   };
 
   const handleSubmitForReview = () => {
@@ -681,42 +716,27 @@ const TestingWorkspacePage: React.FC<{
       alert("All samples must be tested before submitting for review.");
       return;
     }
-    if (
-      window.confirm(
-        "Are you sure you want to submit for review? This action will lock testing.",
-      )
-    ) {
-      // System Result is computed here — but Conclusion stays null until reviewer approves
-      const computedSystemResult: 'Effective' | 'Ineffective' =
-        summary.failed / summary.total > 0.1 ? "Ineffective" : "Effective";
+    if (window.confirm("Are you sure you want to submit for review? This action will lock testing.")) {
+      const computedSystemResult: 'Effective' | 'Ineffective' = summary.failed / summary.total > 0.1 ? "Ineffective" : "Effective";
       const updatedControl: EngagementControl = {
         ...control,
         status: "Pending Review",
         systemResult: computedSystemResult,
-        conclusion: null, // Conclusion is only set after reviewer approval
+        conclusion: null,
         samplesTested: `${summary.tested}/${summary.total}`,
         testedSamples: summary.tested,
         totalSamples: summary.total,
         exceptions: summary.failed,
-        lastUpdated: new Date().toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
+        lastUpdated: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
         submittedBy: "Aarav Mehta",
-        submittedOn: new Date().toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
+        submittedOn: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
       };
       setOverallStatus("Submitted");
       showToast("Control submitted for review.");
       setTimeout(() => onExit(updatedControl), 500);
     }
   };
-  // These hooks MUST be called before any early return to comply with React's Rules of Hooks.
-  const currentSample = controlDetails?.samples[currentSampleIndex];
+
 
   const currentSampleExecutionResults = useMemo(
     () =>
@@ -803,7 +823,7 @@ const TestingWorkspacePage: React.FC<{
       {/* --- BODY --- */}
       <div className="flex-grow flex overflow-hidden">
         <SampleNavigator
-          samples={controlDetails.samples}
+          samples={localSamples}
           statuses={sampleStatuses}
           currentIndex={currentSampleIndex}
           onSelect={setCurrentSampleIndex}
@@ -824,7 +844,7 @@ const TestingWorkspacePage: React.FC<{
                   onAddDataSource={(ds) => setDataSources(prev => [...prev, ds])}
                   onRemoveDataSource={(id) => setDataSources(prev => prev.filter(d => d.id !== id))}
                   onUpdateMatchingKey={(id, key) => setDataSources(prev => prev.map(d => d.id === id ? { ...d, matchingKey: key} : d))}
-                  availableKeys={Object.keys(currentSample.recordData || {})}
+                  availableKeys={Object.keys(currentSample.sourceRowReference || {})}
                 />
               ) : (
                 <div className="mb-8 p-6 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm text-yellow-800">
@@ -841,15 +861,24 @@ const TestingWorkspacePage: React.FC<{
                 </p>
               </div>
 
+              {/* Bulk Upload Section */}
+              <BulkEvidenceUpload
+                controlInstanceId={control.controlId}
+                session={bulkUploadSession}
+                samples={localSamples}
+                onSessionUpdate={setBulkUploadSession}
+                onApplyMapping={handleApplyMapping}
+              />
+
               {/* Sample Data */}
               {currentSample && (
-                <SampleData recordData={currentSample.recordData} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
+                <SampleData recordData={currentSample.sourceRowReference} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
               )}
 
               {/* Sample Evidence */}
               {currentSample && (
                 <SampleEvidenceSection
-                  evidence={sampleEvidence[currentSample.sampleId] || []}
+                  evidence={currentSample.evidence || []}
                   onUpload={handleEvidenceUpload}
                   onReplace={handleEvidenceUpload}
                   onView={handleEvidenceView}
@@ -877,7 +906,7 @@ const TestingWorkspacePage: React.FC<{
                   'document': ['Supporting Document'],
                 };
 
-                const currentEvidence = sampleEvidence[currentSample.sampleId] || [];
+                const currentEvidence = currentSample.evidence || [];
 
                 const rows = attrList.map(attr => {
                   const nameLower = attr.name.toLowerCase();
@@ -896,7 +925,7 @@ const TestingWorkspacePage: React.FC<{
 
                   const requiredEvidence = Array.from(requiredEvidenceSet);
                   const allPresent = requiredEvidence.length > 0 && requiredEvidence.every(
-                    reqType => currentEvidence.some(ev => ev.evidenceType === reqType && !!ev.filename)
+                    reqType => currentEvidence.some(ev => ev.evidenceType === reqType && !!ev.fileName)
                   );
 
                   return { name: attr.name, type: attr.type, requiredEvidence, ready: allPresent };
@@ -975,7 +1004,7 @@ const TestingWorkspacePage: React.FC<{
                       <p className="text-sm text-red-700 font-medium mb-2">Missing {currentSampleMissingEvidence.length} item(s):</p>
                       <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
                         {currentSampleMissingEvidence.map(ev => (
-                          <li key={ev.id}>{ev.evidenceType}</li>
+                          <li key={ev.evidenceId}>{ev.evidenceType}</li>
                         ))}
                       </ul>
                     </div>
@@ -1010,11 +1039,11 @@ const TestingWorkspacePage: React.FC<{
             <>
               {isDynamicTestScript && currentSample ? (
                 <>
-                  <SampleData recordData={currentSample.recordData} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
+                  <SampleData recordData={currentSample.sourceRowReference} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
                   <RuleEvaluationTable
                     rules={controlDetails.testScript!.rules}
                     executionResults={currentSampleExecutionResults}
-                    auditorInputs={resultsState[currentSample.sampleId]}
+                    auditorInputs={currentSample.attributeResults.reduce((acc, ar) => ({...acc, [ar.attributeId]: { override: ar.auditorResult, comment: ar.comments, evidence: '' }}), {})}
                     onUpdate={handleUpdateRuleResult}
                     isLocked={overallStatus === "Submitted"}
                   />
@@ -1050,14 +1079,8 @@ const TestingWorkspacePage: React.FC<{
                         </label>
                         <select
                           id="finalDecision"
-                          value={finalSampleDecisions[currentSample.sampleId] || ""}
-                          onChange={(e) =>
-                            setFinalSampleDecisions((prev) => ({
-                              ...prev,
-                              [currentSample.sampleId]: e.target
-                                .value as AuditorOverride,
-                            }))
-                          }
+                          value={currentSample.auditorResult || ""}
+                          onChange={(e) => handleSampleFinalDecision(currentSample.sampleId, e.target.value as AuditorOverride)}
                           disabled={overallStatus === "Submitted"}
                           className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100"
                         >
@@ -1075,7 +1098,7 @@ const TestingWorkspacePage: React.FC<{
                   <TestingPanel
                     sample={currentSample}
                     attributes={controlDetails.attributes!}
-                    results={legacyResultsState[currentSample.sampleId] || {}}
+                    results={currentSample.attributeResults.reduce((acc, ar) => ({...acc, [ar.attributeId]: { auditorResult: ar.auditorResult, comment: ar.comments, evidence: '' }}), {})}
                     onUpdate={handleUpdateLegacyResult}
                     isLocked={overallStatus === "Submitted"}
                   />
@@ -1107,10 +1130,10 @@ const TestingWorkspacePage: React.FC<{
           <aside className="w-72 flex-shrink-0 border-l border-gray-200 bg-white p-6">
             <h3 className="text-base font-semibold text-gray-900 mb-4">Evidence Overview</h3>
             <div className="space-y-3">
-              {controlDetails.samples.map((sample: any, idx: number) => {
+              {localSamples.map((sample: SampleModel, idx: number) => {
                 const status = evidenceReadiness[sample.sampleId] || 'pending';
-                const evList = sampleEvidence[sample.sampleId] || [];
-                const uploaded = evList.filter(ev => !!ev.filename).length;
+                const evList = sample.evidence || [];
+                const uploaded = evList.filter(ev => !!ev.fileName).length;
                 return (
                   <button
                     key={sample.sampleId}
@@ -1166,7 +1189,11 @@ const TestingWorkspacePage: React.FC<{
           <button
             onClick={handleRunTesting}
             disabled={!allSamplesReady}
-            className="rounded-md bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition"
+            title={hasPendingBulkSession ? "Please clear pending bulk upload session to run testing" : ""}
+            className={`rounded-md px-6 py-2.5 text-sm font-bold text-white shadow-sm transition
+              ${!allSamplesReady 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-emerald-600 hover:bg-emerald-500'}`}
           >
             Run Testing
           </button>
@@ -1205,7 +1232,7 @@ const TestingWorkspacePage: React.FC<{
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Evidence: {evidenceViewerUrl.filename}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Evidence: {evidenceViewerUrl.fileName}</h3>
               <button onClick={() => setEvidenceViewerUrl(null)} className="text-gray-400 hover:text-gray-600">
                 <CloseIcon className="h-5 w-5" />
               </button>
@@ -1228,7 +1255,7 @@ const TestingWorkspacePage: React.FC<{
           controlName={control.controlName}
           sample={currentSample}
           sampleIndex={currentSampleIndex}
-          evidence={sampleEvidence[currentSample.sampleId] || []}
+          evidence={currentSample.evidence || []}
           sampleStatus={sampleStatuses[currentSample.sampleId] || 'NOT_TESTED'}
           systemDeterminedResult={systemDeterminedResult}
           attributes={isDynamicTestScript ? controlDetails.testScript!.rules.map(r => ({id: r.id, name: r.description || r.name})) : controlDetails.attributes!.map(a => ({id: a.attributeId, name: a.name}))}

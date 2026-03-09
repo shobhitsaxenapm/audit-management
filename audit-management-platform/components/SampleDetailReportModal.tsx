@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import type { ControlFullDetail, SampleEvidence, SampleFinalStatus, TestScriptRule, RuleExecutionResult } from '../types';
+import type { ControlFullDetail, EvidenceModel, SampleFinalStatus, TestScriptRule, RuleExecutionResult } from '../types';
 import { CloseIcon } from './icons/Icons';
 
 interface SampleDetailReportModalProps {
@@ -7,7 +7,7 @@ interface SampleDetailReportModalProps {
   controlName: string;
   sample: Record<string, any>;
   sampleIndex: number;
-  evidence: SampleEvidence[];
+  evidence: EvidenceModel[];
   sampleStatus: SampleFinalStatus;
   systemDeterminedResult: string;
   attributes: { id: number; name: string }[];
@@ -59,8 +59,8 @@ const SampleDetailReportModal: React.FC<SampleDetailReportModalProps> = ({
 
   const recordData = sample.recordData || {};
   const hasRecordData = Object.keys(recordData).length > 0;
-  const uploadedEvidence = evidence.filter(ev => !!ev.filename);
-  const missingEvidence = evidence.filter(ev => !ev.filename);
+  const uploadedEvidence = evidence.filter(ev => !!ev.fileName);
+  const missingEvidence = evidence.filter(ev => !ev.fileName);
 
   const getResultLabel = (status: SampleFinalStatus) => {
     switch (status) {
@@ -159,12 +159,12 @@ const SampleDetailReportModal: React.FC<SampleDetailReportModalProps> = ({
                 </thead>
                 <tbody>
                   {evidence.map((ev, i) => (
-                    <tr key={ev.id} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
+                    <tr key={ev.evidenceId} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
                       <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">{ev.evidenceType}</td>
-                      <td className="px-3 py-2 border border-gray-200 text-gray-600">{ev.filename || '—'}</td>
+                      <td className="px-3 py-2 border border-gray-200 text-gray-600">{ev.fileName || '—'}</td>
                       <td className="px-3 py-2 border border-gray-200">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${ev.filename ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {ev.filename ? 'Uploaded' : 'Missing'}
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${ev.fileName ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {ev.fileName ? 'Uploaded' : 'Missing'}
                         </span>
                       </td>
                     </tr>
@@ -187,7 +187,7 @@ const SampleDetailReportModal: React.FC<SampleDetailReportModalProps> = ({
                   </thead>
                   <tbody>
                     {attributes.map((attr, i) => (
-                      <tr key={attr.id} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
+                      <tr key={attr.evidenceId} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
                         <td className="px-3 py-2 border border-gray-200 text-gray-500 font-medium">{String.fromCharCode(65 + i)}</td>
                         <td className="px-3 py-2 border border-gray-200 text-gray-800">{attr.name}</td>
                       </tr>

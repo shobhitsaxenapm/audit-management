@@ -1,214 +1,17 @@
+import re
 
-import type { RACM, RACMDetail, Engagement, EngagementType, EngagementControl, ControlFullDetail, SampleModel } from './types';
+with open('constants.ts', 'r') as f:
+    content = f.read()
 
-export const racmData: RACM[] = [
-  {
-    "id": 1,
-    "name": "FY26 SOX Master RACM",
-    "framework": "SOX",
-    "financialYear": "FY 2026",
-    "version": "v1.0",
-    "status": "Active",
-    "locked": true,
-    "linkedEngagements": 2,
-    "lastUpdated": "12 Oct 2025",
-    "owner": "Aarav Mehta"
-  },
-  {
-    "id": 2,
-    "name": "FY26 Internal Audit ITGC",
-    "framework": "Internal",
-    "financialYear": "FY 2026",
-    "version": "v1.2",
-    "status": "Draft",
-    "locked": false,
-    "linkedEngagements": 0,
-    "lastUpdated": "14 Oct 2025",
-    "owner": "Riya Sharma"
-  },
-  {
-    "id": 3,
-    "name": "FY25 SOX Master RACM",
-    "framework": "SOX",
-    "financialYear": "FY 2025",
-    "version": "v2.1",
-    "status": "Archived",
-    "locked": false,
-    "linkedEngagements": 1,
-    "lastUpdated": "01 Apr 2025",
-    "owner": "Aarav Mehta"
-  },
-  {
-    "id": 4,
-    "name": "IFC Manufacturing Operations",
-    "framework": "IFC",
-    "financialYear": "FY 2026",
-    "version": "v1.0",
-    "status": "Active",
-    "locked": true,
-    "linkedEngagements": 4,
-    "lastUpdated": "10 Oct 2025",
-    "owner": "Kabir Shah"
-  },
-   {
-    "id": 5,
-    "name": "FY26 Financial Reporting Controls",
-    "framework": "SOX",
-    "financialYear": "FY 2026",
-    "version": "v1.1",
-    "status": "Active",
-    "locked": false,
-    "linkedEngagements": 3,
-    "lastUpdated": "11 Oct 2025",
-    "owner": "Neha Patel"
-  },
-   {
-    "id": 6,
-    "name": "FY25 Internal Audit - Procurement",
-    "framework": "Internal",
-    "financialYear": "FY 2025",
-    "version": "v1.0",
-    "status": "Archived",
-    "locked": false,
-    "linkedEngagements": 2,
-    "lastUpdated": "15 Mar 2025",
-    "owner": "Riya Sharma"
-  },
-   {
-    "id": 7,
-    "name": "FY26 Draft IT Controls",
-    "framework": "ITGC",
-    "financialYear": "FY 2026",
-    "version": "v0.5",
-    "status": "Draft",
-    "locked": false,
-    "linkedEngagements": 0,
-    "lastUpdated": "15 Oct 2025",
-    "owner": "Kabir Shah"
-  }
-];
-
-export const racmBuilderData: RACMDetail[] = [
-  { id: 1, riskId: "R-101", riskDescription: "Unauthorized access to financial systems resulting in data manipulation", assertion: "Existence", controlName: "IT conducts quarterly logical access reviews across all tier 1 systems", controlDescription: "To ensure access rights remain appropriate, the IT department performs and documents a logical access review for all in-scope tier 1 systems on a quarterly basis. Evidence of review and sign-off by system owners is retained.", key: true },
-  { id: 2, riskId: "R-101", riskDescription: "Unauthorized access to financial systems resulting in data manipulation", assertion: "Completeness", controlName: "Automated termination scripts revoke user access within 24 hours", controlDescription: "Upon an employee's termination date as recorded in the HR system, an automated script is triggered to disable all system access within a 24-hour service level agreement.", key: false },
-  { id: 3, riskId: "R-102", riskDescription: "Data loss or corruption due to insufficient backup mechanisms", assertion: "Completeness", controlName: "Automated daily backups are performed and replicated to offsite storage", controlDescription: "Full backups of critical financial data are performed daily. Upon successful completion, backups are encrypted and replicated to a secure, geographically separate offsite storage facility.", key: true },
-  { id: 4, riskId: "R-103", riskDescription: "Inaccurate financial reporting due to unrecorded transactions", assertion: "Accuracy", controlName: "Manual reconciliation of financial statements", controlDescription: "The finance team performs a manual reconciliation of the balance sheet and income statement to underlying sub-ledgers on a monthly basis. Any discrepancies are investigated and resolved.", key: true },
-  { id: 5, riskId: "R-103", riskDescription: "Inaccurate financial reporting due to unrecorded transactions", assertion: "Accuracy", controlName: "System enforced tolerance limits for automated journal entries", controlDescription: "The ERP system is configured with tolerance limits for automated journal entries. Any entry exceeding these predefined thresholds requires manual review and approval before posting.", key: false },
-  { id: 6, riskId: "R-104", riskDescription: "Unapproved vendor payments or fictitious vendors created", assertion: "Valuation", controlName: "Vendor onboarding requires independent review and approval by Controller", controlDescription: "New vendor setup requests are subject to an independent review by the Accounts Payable manager and final approval from the Controller to prevent fictitious vendor creation.", key: true },
-  { id: 7, riskId: "R-104", riskDescription: "Unapproved vendor payments or fictitious vendors created", assertion: "Accuracy", controlName: "System performs a three-way match before invoice processing", controlDescription: "The accounts payable system is configured to automatically perform a three-way match between the purchase order, goods receipt note, and vendor invoice. Invoices with discrepancies are flagged for manual review.", key: false },
-  { id: 8, riskId: "R-105", riskDescription: "Duplicate payments processed for the same invoice", assertion: "Completeness", controlName: "ERP system is configured to flag duplicate invoice numbers automatically", controlDescription: "To prevent duplicate payments, the ERP system is configured with a check to identify and flag any vendor invoice number that has already been processed.", key: true },
-  { id: 9, riskId: "R-106", riskDescription: "Unauthorized journal entries posted to the general ledger", assertion: "Existence", controlName: "Segregation of duties enforced within ERP access roles", controlDescription: "ERP access roles are designed to enforce segregation of duties, preventing a single user from having conflicting permissions (e.g., creating a vendor and processing a payment to that vendor).", key: true },
-  { id: 10, riskId: "R-107", riskDescription: "Misstatement of revenue due to incorrect contract terms applied", assertion: "Cut-off", controlName: "Legal and Finance review all non-standard revenue contracts", controlDescription: "All sales contracts with non-standard terms, including customized payment schedules or revenue recognition criteria, are reviewed and approved by both the Legal and Finance departments before execution.", key: true },
-];
-
-export const CONTROL_LIBRARY: string[] = [
-  "IT conducts quarterly logical access reviews across all tier 1 systems",
-  "Automated termination scripts revoke user access within 24 hours",
-  "Automated daily backups are performed and replicated to offsite storage",
-  "Manual reconciliation of financial statements",
-  "System enforced tolerance limits for automated journal entries",
-  "Vendor onboarding requires independent review and approval by Controller",
-  "System performs a three-way match before invoice processing",
-  "ERP system is configured to flag duplicate invoice numbers automatically",
-  "Segregation of duties enforced within ERP access roles",
-  "Legal and Finance review all non-standard revenue contracts",
-  "User access rights are reviewed semi-annually by data owners.",
-  "Data classification policies are defined and communicated.",
-  "Incident response plan is tested annually.",
-  "Change management procedures are documented and followed for all system changes.",
-  "Physical access to data centers is restricted and monitored.",
-];
-
-
-export const engagementData: Engagement[] = [
-  {
-    "id": 1,
-    "name": "SOX 2024 Q1 - North America",
-    "type": "SOX",
-    "period": "Q1 2024",
-    "totalDeficiencies": 2,
-    "status": "IN PROGRESS"
-  },
-  {
-    "id": 2,
-    "name": "ITGC Annual Review FY24",
-    "type": "Internal Audit",
-    "period": "FY 2024",
-    "totalDeficiencies": 0,
-    "status": "UNDER REVIEW"
-  },
-  {
-    "id": 3,
-    "name": "EMEA Payroll Controls",
-    "type": "Operational",
-    "period": "Q2 2024",
-    "totalDeficiencies": 4,
-    "status": "IN PROGRESS"
-  },
-  {
-    "id": 4,
-    "name": "APAC Financial Review",
-    "type": "SOX",
-    "period": "Q2 2024",
-    "totalDeficiencies": 0,
-    "status": "NOT STARTED"
-  },
-  {
-    "id": 5,
-    "name": "Procure-to-Pay Assessment",
-    "type": "Internal Audit",
-    "period": "Q1 2024",
-    "totalDeficiencies": 1,
-    "status": "IN PROGRESS"
-  },
-  {
-    "id": 6,
-    "name": "Cybersecurity Framework Audit",
-    "type": "IT Audit",
-    "period": "FY 2024",
-    "totalDeficiencies": 3,
-    "status": "UNDER REVIEW"
-  },
-  {
-    "id": 7,
-    "name": "Inventory Counts - US Plants",
-    "type": "Operational",
-    "period": "Q3 2024",
-    "totalDeficiencies": 0,
-    "status": "NOT STARTED"
-  },
-  {
-    "id": 8,
-    "name": "SOX 2023 Q4 - Wrap Up",
-    "type": "SOX",
-    "period": "Q4 2023",
-    "totalDeficiencies": 0,
-    "status": "CLOSED"
-  }
-];
-
-export const LEAD_PARTNERS = ["Aarav Mehta", "Riya Sharma", "Kabir Shah", "Neha Patel"];
-export const ENGAGEMENT_TYPES: EngagementType[] = ["SOX", "Internal Audit", "Operational", "IT Audit", "Compliance"];
-
-export const engagementControlsData: EngagementControl[] = [
-    { id: 1, controlId: 'ITGC-01', controlName: 'Logical Access - User Provisioning', domain: 'Logical Access', key: true, status: 'Concluded', samplesTested: '25/25', testedSamples: 25, totalSamples: 25, exceptions: 0, systemResult: 'Effective', conclusion: 'Effective', lastUpdated: '12 Oct 25' },
-    { id: 2, controlId: 'ITGC-02', controlName: 'Terminated User Access Revocation', domain: 'Logical Access', key: true, status: 'Pending Review', samplesTested: '25/25', testedSamples: 25, totalSamples: 25, exceptions: 2, systemResult: 'Ineffective', conclusion: null, lastUpdated: '15 Oct 25', submittedBy: "Aarav Mehta", submittedOn: "15 Oct 2025" },
-    { id: 3, controlId: 'ITGC-03', controlName: 'Privileged Access Review', domain: 'Logical Access', key: true, status: 'Evidence Collection', samplesTested: '0/4', testedSamples: 0, totalSamples: 4, exceptions: 0, systemResult: null, conclusion: null, lastUpdated: '15 Oct 25', process: 'IT Access Management', frequency: 'Quarterly' },
-    { id: 4, controlId: 'ITGC-04', controlName: 'Password Configuration', domain: 'Logical Access', key: false, status: 'Not Started', samplesTested: '0/1', testedSamples: 0, totalSamples: 1, exceptions: 0, systemResult: null, conclusion: null, lastUpdated: '10 Oct 25' },
-    { id: 5, controlId: 'ITGC-05', controlName: 'Change Management - Code Migration', domain: 'Change Management', key: true, status: 'Concluded', samplesTested: '45/45', testedSamples: 45, totalSamples: 45, exceptions: 0, systemResult: 'Effective', conclusion: 'Effective', lastUpdated: '13 Oct 25' },
-    { id: 6, controlId: 'ITGC-06', controlName: 'Emergency Change Process', domain: 'Change Management', key: true, status: 'Testing In Progress', samplesTested: '8/10', testedSamples: 8, totalSamples: 10, exceptions: 0, systemResult: null, conclusion: null, lastUpdated: '15 Oct 25' },
-    { id: 7, controlId: 'ITGC-07', controlName: 'Segregation of Duties (IT)', domain: 'Change Management', key: true, status: 'Evidence Collection', samplesTested: '0/3', testedSamples: 0, totalSamples: 3, exceptions: 0, systemResult: null, conclusion: null, lastUpdated: '12 Oct 25' },
-    { id: 8, controlId: 'ITGC-08', controlName: 'System Backup Procedures', domain: 'IT Operations', key: true, status: 'Concluded', samplesTested: '30/30', testedSamples: 30, totalSamples: 30, exceptions: 0, systemResult: 'Effective', conclusion: 'Effective', lastUpdated: '09 Oct 25' },
-    { id: 9, controlId: 'ITGC-09', controlName: 'Batch Job Monitoring', domain: 'IT Operations', key: false, status: 'Testing In Progress', samplesTested: '3/3', testedSamples: 3, totalSamples: 3, exceptions: 1, systemResult: 'Ineffective', conclusion: null, lastUpdated: '10 Oct 25' },
-];
-
+# I will just write the helper and replace detailedControlData entirely
+new_block = """
 // Helper to migrate legacy flat sample objects to new SampleModel
 const createMockSample = (controlId: string, datasetId: string, sampleId: string, identifier: string, data: Record<string, any>, overrides: Partial<SampleModel> = {}): SampleModel => ({
     sampleId,
     controlInstanceId: controlId,
     populationDatasetId: datasetId,
     sampleIdentifier: identifier,
-    sampleNumber: parseInt(sampleId.split('-').pop()?.replace(/\D/g, '') || '0', 10),
+    sampleNumber: parseInt(sampleId.split('-').pop()?.replace(/\\D/g, '') || '0', 10),
     sourceRowReference: data,
     status: overrides.status || 'NOT TESTED',
     systemResult: overrides.systemResult || null,
@@ -350,7 +153,7 @@ export const detailedControlData: Record<string, ControlFullDetail> = {
         ]
     },
     'ITGC-07': {
-        overview: { controlId: "ITGC-07", controlName: "Segregation of Duties (IT)", description: "IT roles and responsibilities are segregated to prevent fraudulent activities. Key conflicting duties are identified and monitored.", classification: "Key Control", assertions: ["Prevention"] },
+        overview: { controlId: "ITGC-07", controlName: "Segregation of Duties (IT)", description: "IT roles and responsibilities are segregated to prevent fraudulent activities.", classification: "Key Control", assertions: ["Prevention"] },
         attributes: [
             { attributeId: 1, name: "Verify user does not have conflicting roles", mandatory: true, ruleLogic: (sample: any) => !sample.sourceRowReference.hasConflict },
             { attributeId: 2, name: "Verify mitigating control is in place if conflict exists", mandatory: false, ruleLogic: (sample: any) => sample.sourceRowReference.hasConflict ? sample.sourceRowReference.mitigatingControlExists : true }
@@ -378,7 +181,7 @@ export const detailedControlData: Record<string, ControlFullDetail> = {
         ]
     },
     'ITGC-09': {
-        overview: { controlId: "ITGC-09", controlName: "Batch Job Monitoring", description: "Automated batch jobs are monitored for successful completion, and failures are investigated and resolved timely.", classification: "Non-Key Control", assertions: ["Completeness", "Accuracy"] },
+        overview: { controlId: "ITGC-09", controlName: "Batch Job Monitoring", description: "Automated batch jobs are monitored for successful completion, and failures are investigated.", classification: "Non-Key Control", assertions: ["Completeness", "Accuracy"] },
         attributes: [
             { attributeId: 1, name: "Verify job completed successfully", mandatory: true, ruleLogic: (sample: any) => sample.sourceRowReference.jobStatus === "Success" },
             { attributeId: 2, name: "If failed, verify investigation ticket was created", mandatory: true, ruleLogic: (sample: any) => sample.sourceRowReference.jobStatus === "Success" || sample.sourceRowReference.ticketId !== null }
@@ -391,3 +194,10 @@ export const detailedControlData: Record<string, ControlFullDetail> = {
         ]
     }
 };
+"""
+
+content = re.sub(r'export const detailedControlData[^;]+;', new_block, content, flags=re.MULTILINE|re.DOTALL)
+content = content.replace("import type { RACM, RACMDetail, Engagement, EngagementType, EngagementControl, ControlFullDetail } from './types';", "import type { RACM, RACMDetail, Engagement, EngagementType, EngagementControl, ControlFullDetail, SampleModel } from './types';")
+
+with open('constants.ts', 'w') as f:
+    f.write(content)

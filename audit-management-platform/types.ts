@@ -182,29 +182,146 @@ export interface ControlDataSource {
 }
 
 // Sample Evidence — per-sample document evidence
-export interface SampleEvidence {
-  id: string;
-  evidenceType: string;
-  description: string;
-  filename: string | null;
-  fileUrl: string | null;
-  uploadDate: string | null;
-}
 
-export const DEFAULT_EVIDENCE_TYPES: Omit<SampleEvidence, 'id'>[] = [
-  { evidenceType: 'Estimate PDF', description: 'Estimate document containing expected publication details', filename: null, fileUrl: null, uploadDate: null },
-  { evidenceType: 'Media Invoice PDF', description: 'Agency invoice document', filename: null, fileUrl: null, uploadDate: null },
-  { evidenceType: 'Publication Invoice PDF', description: 'Vendor invoice with supporting pages', filename: null, fileUrl: null, uploadDate: null },
-  { evidenceType: 'Supporting Document', description: 'Additional supporting evidence', filename: null, fileUrl: null, uploadDate: null },
+
+export const DEFAULT_EVIDENCE_TYPES: Omit<EvidenceModel, 'evidenceId' | 'sampleId'>[] = [
+  { evidenceType: 'Estimate PDF', evidenceName: 'Estimate document containing expected publication details', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+  { evidenceType: 'Media Invoice PDF', evidenceName: 'Agency invoice document', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+  { evidenceType: 'Publication Invoice PDF', evidenceName: 'Vendor invoice with supporting pages', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+  { evidenceType: 'Supporting Document', evidenceName: 'Additional supporting evidence', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
 ];
 
 export interface ControlFullDetail {
     overview: ControlOverview;
-    testScript?: TestScript; // NEW, replacing attributes
-    // FIX: Changed attributes from any[] to TestScriptAttribute[] for type safety.
-    attributes?: TestScriptAttribute[]; // Keep for backward compatibility with other controls
+    testScript?: TestScript;
+    attributes?: TestScriptAttribute[];
     snapshot: PopulationSnapshot | null;
-    samples: SampleRecord[];
+    samples: SampleModel[]; // Replaced SampleRecord[] with the formalized SampleModel
+}
+
+// --- CORE DATA MODEL ALIGNMENT ---
+
+export interface EngagementModel {
+  engagementId: string;
+  engagementName: string;
+  linkedRacmId: string;
+  auditPeriod: string;
+  status: EngagementStatus;
+  owner: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Legacy aliases for backward compatibility
+  id?: number; 
+  name?: string;
+  type?: string;
+  period?: string;
+}
+
+export interface ControlModel {
+  controlInstanceId: string;
+  engagementId: string;
+  controlId: string;
+  controlName: string;
+  controlDescription: string;
+  domain: string;
+  keyControlFlag: boolean;
+  frequency: string;
+  status: ControlStatus;
+  result: ControlConclusion | null;
+  testScriptId?: string;
+  totalSamples: number;
+  testedSamples: number;
+  exceptionsCount: number;
+  lastUpdated: string;
+}
+
+export interface PopulationDatasetModel {
+  populationDatasetId: string;
+  controlInstanceId: string;
+  sourceName: string;
+  sourceType: string;
+  fileName: string;
+  totalRecords: number;
+  uploadedAt: string;
+  uploadedBy: string;
+  matchingKeyConfig: string;
+  previewAvailable: boolean;
+}
+
+export type FileMappingStatus = 'MAPPED' | 'UNMATCHED' | 'DUPLICATE' | 'AMBIGUOUS';
+
+export interface BulkUploadFile {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  uploadStatus: 'pending' | 'uploading' | 'completed' | 'failed';
+  storageReference: string | null;
+  mappingStatus?: FileMappingStatus;
+  mappedSampleId?: string;
+  mappedEvidenceId?: string; // This corresponds to the evidence type or an existing ID
+  mappedEvidenceType?: string; // Storing the string representation of expected evidence type
+}
+
+export interface BulkUploadSession {
+  bulkUploadSessionId: string;
+  controlInstanceId: string;
+  uploadedFilesCount: number;
+  mappedFilesCount: number;
+  unmatchedFilesCount: number;
+  duplicateFilesCount: number;
+  createdAt: string;
+  createdBy: string;
+  status: 'initialized' | 'in_progress' | 'completed' | 'failed';
+  files: BulkUploadFile[];
+}
+
+export interface EvidenceModel {
+  evidenceId: string;
+  sampleId: string;
+  evidenceType: string;
+  evidenceName: string;
+  fileName: string | null;
+  fileType: string;
+  storageReference: string | null;
+  status: string;
+  uploadedAt: string | null;
+  uploadedBy: string;
+  sourceOrigin: string;
+}
+
+export interface AttributeResultModel {
+  attributeResultId: string;
+  sampleId: string;
+  controlInstanceId: string;
+  attributeId: string | number;
+  attributeName: string;
+  expectedValue: any;
+  actualValue: any;
+  readinessStatus: string;
+  systemResult: SystemResult;
+  auditorResult: AuditorOverride;
+  comments: string;
+  evidenceReferences: string[];
+  testedAt: string;
+}
+
+export interface SampleModel {
+  sampleId: string;
+  controlInstanceId: string;
+  populationDatasetId: string;
+  sampleIdentifier: string;
+  sampleNumber: number;
+  sourceRowReference: Record<string, any>;
+  status: SampleFinalStatus;
+  systemResult: SystemResult | null;
+  auditorResult: AuditorOverride | null;
+  comments: string;
+  selectedAt: string;
+  
+  evidence: EvidenceModel[];
+  attributeResults: AttributeResultModel[];
 }
 
 // Testing Workspace Types
