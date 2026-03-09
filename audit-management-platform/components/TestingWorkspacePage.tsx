@@ -63,6 +63,69 @@ const RuleLogicTooltip: React.FC<{ logic: RuleLogic }> = ({ logic }) => {
   );
 };
 
+const ControlTestingWorkflow: React.FC<{
+  stages: { id: string; name: string; state: "completed" | "current" | "not_started" }[];
+}> = ({ stages }) => (
+  <div className="mb-8 border border-gray-200 bg-white rounded-lg shadow-sm">
+    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex flex-col md:flex-row md:justify-between md:items-center rounded-t-lg">
+      <h3 className="text-sm font-semibold text-gray-900">
+        Workflow Progress
+      </h3>
+    </div>
+    <div className="px-8 py-8 relative">
+      <div className="absolute left-[10%] right-[10%] top-1/2 h-0.5 bg-gray-200 -z-10 -translate-y-1/2" />
+      <div className="flex items-center justify-between w-full">
+        {stages.map((stage, idx) => (
+          <div key={idx} className="flex flex-col items-center gap-3 bg-white flex-1 relative z-10 w-24">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center border-2 
+                ${
+                  stage.state === "completed"
+                    ? "bg-green-500 border-green-500 text-white"
+                    : stage.state === "current"
+                    ? "bg-blue-600 border-blue-600"
+                    : "bg-white border-gray-300"
+                }
+              `}
+            >
+              {stage.state === "completed" ? (
+                <svg
+                  className="w-5 h-5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : stage.state === "current" ? (
+                <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+              ) : null}
+            </div>
+            <span
+              className={`text-xs text-center font-medium
+                ${
+                  stage.state === "completed"
+                    ? "text-gray-900"
+                    : stage.state === "current"
+                    ? "text-blue-700 font-bold"
+                    : "text-gray-500"
+                }
+            `}
+            >
+              {stage.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const TestScriptHeader: React.FC<{
   control: EngagementControl;
   controlDetails: ControlFullDetail;
@@ -248,6 +311,7 @@ const RuleEvaluationTable: React.FC<{
 }> = ({ rules, executionResults, auditorInputs, onUpdate, isLocked }) => (
   <div>
     <h3 className="text-base font-semibold text-gray-800 mb-3">
+
       Rule Evaluation
     </h3>
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -796,6 +860,51 @@ const TestingWorkspacePage: React.FC<{
     );
   }
 
+  const workflowStages = useMemo(() => {
+    let s1: "completed" | "current" | "not_started" = "not_started";
+    let s2: "completed" | "current" | "not_started" = "not_started";
+    let s3: "completed" | "current" | "not_started" = "not_started";
+    let s4: "completed" | "current" | "not_started" = "not_started";
+    let s5: "completed" | "current" | "not_started" = "not_started";
+
+    const isCompleted = control.status === "Completed";
+    const isSubmitted =
+      overallStatus === "Submitted" ||
+      control.status === "Pending Review" ||
+      control.status === "Reviewed";
+    const isTestingDone = summary.notTested === 0;
+
+    if (isCompleted) {
+      s1 = "completed"; s2 = "completed"; s3 = "completed"; s4 = "completed"; s5 = "completed";
+    } else if (isSubmitted) {
+      s1 = "completed"; s2 = "completed"; s3 = "completed"; s4 = "completed"; s5 = "current";
+    } else if (testingStep === 2) {
+      s1 = "completed"; s2 = "completed";
+      if (isTestingDone) {
+        s3 = "completed"; s4 = "current"; s5 = "not_started";
+      } else {
+        s3 = "current"; s4 = "not_started"; s5 = "not_started";
+      }
+    } else {
+      s3 = "not_started"; s4 = "not_started"; s5 = "not_started";
+      if (allSamplesReady) {
+        s1 = "completed"; s2 = "completed"; s3 = "current";
+      } else if (dataSources.length > 0) {
+        s1 = "completed"; s2 = "current";
+      } else {
+        s1 = "current"; s2 = "not_started";
+      }
+    }
+
+    return [
+      { id: "data", name: "Data Source", state: s1 },
+      { id: "evidence", name: "Evidence Collection", state: s2 },
+      { id: "testing", name: "Testing", state: s3 },
+      { id: "review", name: "Review", state: s4 },
+      { id: "conclusion", name: "Conclusion", state: s5 },
+    ];
+  }, [control.status, overallStatus, summary.notTested, testingStep, allSamplesReady, dataSources.length]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-lg border border-gray-200 shadow-sm">
       {/* --- HEADER --- */}
@@ -853,6 +962,7 @@ const TestingWorkspacePage: React.FC<{
 
         <main className="flex-grow p-6 overflow-y-auto">
           <TestScriptHeader control={control} controlDetails={controlDetails} />
+          <ControlTestingWorkflow stages={workflowStages} />
 
           {/* ========================= STEP 1: Evidence Collection ========================= */}
           {testingStep === 1 && (
