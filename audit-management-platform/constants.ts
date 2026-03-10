@@ -297,34 +297,15 @@ export const detailedControlData: Record<string, ControlFullDetail> = {
                 { id: 3, name: 'Revocation of Inappropriate Access', description: 'Verify inappropriate access was revoked if identified', type: 'Accuracy', logic: { fieldName: 'revokedIfInappropriate', operator: '===', expectedValue: true } }
             ],
             workflowPlan: [
-                {
-                    title: "1. Document Alignment",
-                    description: "Extract required documents and align on key fields to confirm sample validity.",
-                    listTitle: "Matching fields",
-                    listItems: ["Vendor name", "Gross amount"]
-                },
-                {
-                    title: "2. Supporting & Metadata Validation",
-                    description: "Check the existence and validity of supporting artifacts.",
-                    listTitle: "Checks",
-                    listItems: [
-                        "Supporting documents exist",
-                        "Publication dates match",
-                        "Brand ads flagged"
-                    ]
-                },
-                {
-                    title: "3. Bid Comparison & Rate Validation",
-                    description: "Verify rate tiers and ensure they follow configured progressive logic.",
-                    listTitle: "Rate tiers",
-                    listItems: ["R0", "R1", "R2"],
-                    codeTitle: "Validation rules",
-                    codeItems: ["R1 <= R0", "R2 <= R1"]
-                },
-                {
-                    title: "4. Output & Reporting",
-                    listItems: ["Validated output file", "Summary report metrics"]
-                }
+                { id: 1, description: "Extract vendor name, gross amount, publication name and dates from Publication Invoice and Media Invoice", actionType: "Extract" },
+                { id: 2, description: "Match Publication Invoice to Media Invoice using vendor name and gross amount", actionType: "Match" },
+                { id: 3, description: "Match Media Invoice to Estimate using publication name and gross amount", actionType: "Match" },
+                { id: 4, description: "Validate supporting documents exist and publication dates match", actionType: "Validate" },
+                { id: 5, description: "Extract R0/R1/R2 rate slabs from vendor quotation or supporting documents", actionType: "Extract" },
+                { id: 6, description: "Sample 5–10 high value invoice items", actionType: "Other" },
+                { id: 7, description: "Verify rate hierarchy rule: R1 <= R0 and R2 <= R1", actionType: "Verify" },
+                { id: 8, description: "Record deviations if any", actionType: "Record" },
+                { id: 9, description: "Generate compliance summary", actionType: "Generate" }
             ]
         },
         snapshot: { snapshotId: "SNAP-1043", datasetName: "privileged_access_Q3", recordCount: 120, uploadedBy: "M. Johnson", uploadDate: "13 Oct 25", status: "Frozen" },

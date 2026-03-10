@@ -157,20 +157,19 @@ export interface TestScriptRule {
     logic: RuleLogic;
 }
 
-export interface WorkflowPlanSection {
-    title: string;
-    description?: string;
-    listTitle?: string;
-    listItems?: string[];
-    codeTitle?: string;
-    codeItems?: string[];
+export type WorkflowActionType = 'Extract' | 'Match' | 'Validate' | 'Verify' | 'Record' | 'Generate' | 'Other';
+
+export interface WorkflowPlanStep {
+    id: number;
+    description: string;
+    actionType: WorkflowActionType;
 }
 
 export interface TestScript {
     version: string;
     generatedDate: string;
     rules: TestScriptRule[];
-    workflowPlan?: WorkflowPlanSection[];
+    workflowPlan?: WorkflowPlanStep[];
 }
 
 export interface TestScriptAttribute {

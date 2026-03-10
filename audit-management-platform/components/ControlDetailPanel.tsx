@@ -120,40 +120,6 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, onClos
                         )}
                     </Section>
 
-                    <Section title="Population Sample Preview">
-                         {!data.snapshot ? <p className="text-sm text-gray-500">No population data uploaded.</p> : (
-                            <div className="space-y-4">
-                               <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
-                                    <div className="font-medium text-gray-600">Snapshot ID:</div><div className="col-span-2 text-gray-800">{data.snapshot.snapshotId}</div>
-                                    <div className="font-medium text-gray-600">Dataset Name:</div><div className="col-span-2 text-gray-800">{data.snapshot.datasetName}</div>
-                                    <div className="font-medium text-gray-600">Record Count:</div><div className="col-span-2 text-gray-800">{data.snapshot.recordCount}</div>
-                                    <div className="font-medium text-gray-600">Uploaded By:</div><div className="col-span-2 text-gray-800">{data.snapshot.uploadedBy}</div>
-                                    <div className="font-medium text-gray-600">Upload Date:</div><div className="col-span-2 text-gray-800">{data.snapshot.uploadDate}</div>
-                                    <div className="font-medium text-gray-600">Status:</div><div className="col-span-2"><span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-800">{data.snapshot.status}</span></div>
-                               </div>
-                                <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Snapshot ID</th>
-                                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Dataset Name</th>
-                                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Record Count</th>
-                                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Uploaded By</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {Array.from({length: 5}).map((_, i) => (
-                                            <tr key={i} className="hover:bg-gray-50">
-                                                <td className="px-4 py-2 text-sm text-gray-700">{data.snapshot?.snapshotId}</td>
-                                                <td className="px-4 py-2 text-sm text-gray-700">{data.snapshot?.datasetName}</td>
-                                                <td className="px-4 py-2 text-sm text-gray-700">{data.snapshot?.recordCount}</td>
-                                                <td className="px-4 py-2 text-sm text-gray-700">{data.snapshot?.uploadedBy}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                         )}
-                    </Section>
 
                 </main>
                 

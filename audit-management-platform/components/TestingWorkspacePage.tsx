@@ -33,8 +33,10 @@ import DataViewerPanel from "./DataViewerPanel";
 import TestingReportModal from "./TestingReportModal";
 import SampleDetailReportModal from "./SampleDetailReportModal";
 import BulkEvidenceUpload from "./BulkEvidenceUpload";
-import WorkflowPlanPanel from "./WorkflowPlanPanel";
+import WorkflowInspectorPanel from "./WorkflowInspectorPanel";
+import PopulationSamplingSetup, { SetupStage } from "./PopulationSamplingSetup";
 import { dataViewerDatasets, datasetNameToId } from "../dataViewerData";
+import type { WorkflowPlanStep } from "../types";
 
 // --- HELPER & SUB-COMPONENTS (scoped to this file) ---
 
@@ -103,8 +105,9 @@ const ControlTestingWorkflow: React.FC<{
 const TestScriptHeader: React.FC<{
   control: EngagementControl;
   controlDetails: ControlFullDetail;
+  isWorkflowPlanOpen?: boolean;
   onViewWorkflowPlan?: () => void;
-}> = ({ control, controlDetails, onViewWorkflowPlan }) => (
+}> = ({ control, controlDetails, isWorkflowPlanOpen, onViewWorkflowPlan }) => (
   <div className="mb-8 border border-gray-200 bg-white rounded-lg shadow-sm">
     {/* A. HEADER ROW */}
     <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between md:items-center rounded-t-lg">
@@ -515,6 +518,7 @@ const TestingWorkspacePage: React.FC<{
   }, [controlDetails]);
 
   const [evidenceViewerUrl, setEvidenceViewerUrl] = useState<{ url: string; fileName: string } | null>(null);
+  const [setupStage, setSetupStage] = useState<SetupStage>("population");
   const [testingStep, setTestingStep] = useState<1 | 2>(1);
 
   const currentSample = localSamples[currentSampleIndex];
@@ -843,6 +847,14 @@ const TestingWorkspacePage: React.FC<{
   }
 
   const workflowStages = useMemo(() => {
+    if (setupStage !== "complete") {
+      return [
+        { id: "s0", name: "Population Selected", state: setupStage !== "population" ? "completed" : "current" as const },
+        { id: "s1", name: "Samples Generated", state: setupStage === "preview" ? "current" : "not_started" as const },
+        { id: "s2", name: "Testing Ready", state: "not_started" as const }
+      ];
+    }
+    
     let s1: "completed" | "current" | "not_started" = "not_started";
     let s2: "completed" | "current" | "not_started" = "not_started";
     let s3: "completed" | "current" | "not_started" = "not_started";
@@ -885,7 +897,7 @@ const TestingWorkspacePage: React.FC<{
       { id: "review", name: "Review", state: s4 },
       { id: "conclusion", name: "Conclusion", state: s5 },
     ];
-  }, [control.status, overallStatus, summary.notTested, testingStep, allSamplesReady, dataSources.length]);
+  }, [control.status, overallStatus, summary.notTested, testingStep, allSamplesReady, dataSources.length, setupStage]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -918,6 +930,14 @@ const TestingWorkspacePage: React.FC<{
             )}
           </div>
           <div className="flex items-center gap-3">
+            {setupStage === 'complete' && testingStep === 1 && (
+              <button
+                onClick={() => setTestingStep(2)}
+                 className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm"
+              >
+                Go to Attribute Testing <ChevronRightIcon className="w-4 h-4 ml-1" />
+              </button>
+            )}
             {/* Step indicator pills */}
             <div className="flex items-center gap-1">
               <span className={`w-3 h-3 rounded-full ${testingStep === 1 ? 'bg-indigo-600' : 'bg-indigo-200'}`} />
@@ -934,44 +954,34 @@ const TestingWorkspacePage: React.FC<{
 
       {/* --- BODY --- */}
       <div className="flex-grow flex overflow-hidden">
-        <SampleNavigator
-          samples={localSamples}
-          statuses={sampleStatuses}
-          currentIndex={currentSampleIndex}
-          onSelect={setCurrentSampleIndex}
-          mode={testingStep === 1 ? 'evidence' : 'results'}
-          evidenceStatuses={evidenceReadiness}
-        />
+        {setupStage !== 'complete' ? (
+          <div className="flex-grow overflow-y-auto w-full p-6">
+             <PopulationSamplingSetup onComplete={() => setSetupStage('complete')} mockSamples={localSamples} />
+          </div>
+        ) : (
+          <>
+            <SampleNavigator
+              samples={localSamples}
+              statuses={sampleStatuses}
+              currentIndex={currentSampleIndex}
+              onSelect={setCurrentSampleIndex}
+              mode={testingStep === 1 ? 'evidence' : 'results'}
+              evidenceStatuses={evidenceReadiness}
+            />
 
-        <main className="flex-grow p-6 overflow-y-auto">
-          <TestScriptHeader control={control} controlDetails={controlDetails} onViewWorkflowPlan={() => setIsWorkflowPlanOpen(true)} />
+            <main className="flex-grow p-6 overflow-y-auto">
+              <TestScriptHeader control={control} controlDetails={controlDetails} isWorkflowPlanOpen={isWorkflowPlanOpen} onViewWorkflowPlan={() => setIsWorkflowPlanOpen(!isWorkflowPlanOpen)} />
 
-          {/* ========================= STEP 1: Evidence Collection ========================= */}
-          {testingStep === 1 && (
-            <>
-              {/* Control Data Sources */}
-              {currentSample ? (
-                <ControlDataSourcesSection
-                  dataSources={dataSources}
-                  onAddDataSource={(ds) => setDataSources(prev => [...prev, ds])}
-                  onRemoveDataSource={(id) => setDataSources(prev => prev.filter(d => d.id !== id))}
-                  onUpdateMatchingKey={(id, key) => setDataSources(prev => prev.map(d => d.id === id ? { ...d, matchingKey: key} : d))}
-                  availableKeys={Object.keys(currentSample.sourceRowReference || {})}
-                />
-              ) : (
-                <div className="mb-8 p-6 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm text-yellow-800">
-                  <p className="font-semibold">No Samples Generated</p>
-                  <p className="text-sm mt-1">Please return to the control overview and generate a sample before performing testing.</p>
-                </div>
-              )}
-
-              {/* Action Required Banner */}
-              <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-lg">
-                <InfoCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800 font-medium">
-                  <span className="font-bold">Action Required:</span> You must upload or select all required data sources before you can submit testing for review.
-                </p>
-              </div>
+              {/* ========================= STEP 1: Evidence Collection ========================= */}
+              {testingStep === 1 && (
+                <>
+                  {/* Action Required Banner */}
+                  <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                    <InfoCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800 font-medium">
+                      <span className="font-bold">Action Required:</span> You must upload or select all required data sources before you can submit testing for review.
+                    </p>
+                  </div>
 
               {/* Bulk Upload Section */}
               <BulkEvidenceUpload
@@ -1276,6 +1286,8 @@ const TestingWorkspacePage: React.FC<{
             </div>
           </aside>
         )}
+          </>
+        )}
       </div>
 
       {/* --- FOOTER --- */}
@@ -1374,8 +1386,8 @@ const TestingWorkspacePage: React.FC<{
           onClose={() => setShowSampleReportModal(false)}
         />
       )}
-
-      <WorkflowPlanPanel
+      
+      <WorkflowInspectorPanel
         isOpen={isWorkflowPlanOpen}
         onClose={() => setIsWorkflowPlanOpen(false)}
         plan={controlDetails.testScript?.workflowPlan}
