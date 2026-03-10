@@ -295,6 +295,36 @@ export const detailedControlData: Record<string, ControlFullDetail> = {
                 { id: 1, name: 'Quarterly Review Completion', description: 'Verify review was completed in the quarter', type: 'Completeness', logic: { fieldName: 'reviewCompleted', operator: '===', expectedValue: true } },
                 { id: 2, name: 'System Owner Sign-off', description: 'Verify system owner signed off on review', type: 'Validity', logic: { fieldName: 'isSignedOff', operator: '===', expectedValue: true } },
                 { id: 3, name: 'Revocation of Inappropriate Access', description: 'Verify inappropriate access was revoked if identified', type: 'Accuracy', logic: { fieldName: 'revokedIfInappropriate', operator: '===', expectedValue: true } }
+            ],
+            workflowPlan: [
+                {
+                    title: "1. Document Alignment",
+                    description: "Extract required documents and align on key fields to confirm sample validity.",
+                    listTitle: "Matching fields",
+                    listItems: ["Vendor name", "Gross amount"]
+                },
+                {
+                    title: "2. Supporting & Metadata Validation",
+                    description: "Check the existence and validity of supporting artifacts.",
+                    listTitle: "Checks",
+                    listItems: [
+                        "Supporting documents exist",
+                        "Publication dates match",
+                        "Brand ads flagged"
+                    ]
+                },
+                {
+                    title: "3. Bid Comparison & Rate Validation",
+                    description: "Verify rate tiers and ensure they follow configured progressive logic.",
+                    listTitle: "Rate tiers",
+                    listItems: ["R0", "R1", "R2"],
+                    codeTitle: "Validation rules",
+                    codeItems: ["R1 <= R0", "R2 <= R1"]
+                },
+                {
+                    title: "4. Output & Reporting",
+                    listItems: ["Validated output file", "Summary report metrics"]
+                }
             ]
         },
         snapshot: { snapshotId: "SNAP-1043", datasetName: "privileged_access_Q3", recordCount: 120, uploadedBy: "M. Johnson", uploadDate: "13 Oct 25", status: "Frozen" },

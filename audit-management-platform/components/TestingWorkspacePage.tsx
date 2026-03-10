@@ -33,6 +33,7 @@ import DataViewerPanel from "./DataViewerPanel";
 import TestingReportModal from "./TestingReportModal";
 import SampleDetailReportModal from "./SampleDetailReportModal";
 import BulkEvidenceUpload from "./BulkEvidenceUpload";
+import WorkflowPlanPanel from "./WorkflowPlanPanel";
 import { dataViewerDatasets, datasetNameToId } from "../dataViewerData";
 
 // --- HELPER & SUB-COMPONENTS (scoped to this file) ---
@@ -110,7 +111,7 @@ const TestScriptHeader: React.FC<{
         Control & Test Script Information
       </h3>
       {controlDetails.testScript && (
-        <div className="mt-4 md:mt-0 flex items-center gap-3">
+        <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-3">
           <button
             onClick={() =>
               window.open("/Sample-Test-Script-Cash-and-Bank.xlsx", "_blank")
@@ -132,6 +133,17 @@ const TestScriptHeader: React.FC<{
           >
             Download Test Script
           </button>
+          {controlDetails.testScript.workflowPlan && (
+            <button
+              onClick={() => {
+                const event = new CustomEvent('open-workflow-plan');
+                window.dispatchEvent(event);
+              }}
+              className="rounded-md bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-100 transition-colors"
+            >
+              View Workflow Plan
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -485,6 +497,16 @@ const TestingWorkspacePage: React.FC<{
   const [previewDataset, setPreviewDataset] = useState<ControlDataSource | null>(null);
   const [viewerDataset, setViewerDataset] = useState<DataViewerDataset | null>(null);
   const [viewerHighlightId, setViewerHighlightId] = useState<string | undefined>(undefined);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [isWorkflowPlanOpen, setIsWorkflowPlanOpen] = useState(false);
+
+  // Added listener for the CustomEvent fired by the TestScriptHeader component
+  React.useEffect(() => {
+    const handleOpenPlan = () => setIsWorkflowPlanOpen(true);
+    window.addEventListener('open-workflow-plan', handleOpenPlan);
+    return () => window.removeEventListener('open-workflow-plan', handleOpenPlan);
+  }, []);
+
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSampleReportModal, setShowSampleReportModal] = useState(false);
   const [bulkUploadSession, setBulkUploadSession] = useState<BulkUploadSession | null>(null);
