@@ -103,7 +103,8 @@ const ControlTestingWorkflow: React.FC<{
 const TestScriptHeader: React.FC<{
   control: EngagementControl;
   controlDetails: ControlFullDetail;
-}> = ({ control, controlDetails }) => (
+  onViewWorkflowPlan?: () => void;
+}> = ({ control, controlDetails, onViewWorkflowPlan }) => (
   <div className="mb-8 border border-gray-200 bg-white rounded-lg shadow-sm">
     {/* A. HEADER ROW */}
     <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between md:items-center rounded-t-lg">
@@ -135,10 +136,7 @@ const TestScriptHeader: React.FC<{
           </button>
           {controlDetails.testScript.workflowPlan && (
             <button
-              onClick={() => {
-                const event = new CustomEvent('open-workflow-plan');
-                window.dispatchEvent(event);
-              }}
+              onClick={onViewWorkflowPlan}
               className="rounded-md bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-100 transition-colors"
             >
               View Workflow Plan
@@ -499,13 +497,6 @@ const TestingWorkspacePage: React.FC<{
   const [viewerHighlightId, setViewerHighlightId] = useState<string | undefined>(undefined);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [isWorkflowPlanOpen, setIsWorkflowPlanOpen] = useState(false);
-
-  // Added listener for the CustomEvent fired by the TestScriptHeader component
-  React.useEffect(() => {
-    const handleOpenPlan = () => setIsWorkflowPlanOpen(true);
-    window.addEventListener('open-workflow-plan', handleOpenPlan);
-    return () => window.removeEventListener('open-workflow-plan', handleOpenPlan);
-  }, []);
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSampleReportModal, setShowSampleReportModal] = useState(false);
@@ -957,7 +948,7 @@ const TestingWorkspacePage: React.FC<{
         />
 
         <main className="flex-grow p-6 overflow-y-auto">
-          <TestScriptHeader control={control} controlDetails={controlDetails} />
+          <TestScriptHeader control={control} controlDetails={controlDetails} onViewWorkflowPlan={() => setIsWorkflowPlanOpen(true)} />
 
           {/* ========================= STEP 1: Evidence Collection ========================= */}
           {testingStep === 1 && (
