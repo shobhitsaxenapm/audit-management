@@ -8,7 +8,38 @@ interface WorkflowPlanPanelProps {
   plan?: WorkflowPlanSection[];
 }
 
+const HARDCODED_PLAN: WorkflowPlanSection[] = [
+  {
+      title: "1. Document Alignment",
+      description: "Match Publication Invoice to Agency Invoice by:",
+      listItems: ["Third-party vendor name", "Gross amount"]
+  },
+  {
+      title: "2. Supporting & Metadata Validation",
+      listItems: [
+          "Confirm supporting documents exist",
+          "Validate publication dates match",
+          "Flag Titan brand ads"
+      ]
+  },
+  {
+      title: "3. Bid Comparison & Rate Validation",
+      description: "Extract vendor quotation with split rates:\n\nR0 (0–100 units)\nR1 (101–500 units)\nR2 (501+ units)",
+      codeTitle: "Validation rules:",
+      codeItems: ["R1 <= R0", "R2 <= R1"],
+      listTitle: "Log deviations where:",
+      listItems: ["R0 < R1", "R1 < R2"]
+  },
+  {
+      title: "4. Output & Reporting",
+      listTitle: "Validated Invoice File with columns:",
+      listItems: ["Vendor name match", "Amount match", "Supporting docs", "Date matched", "Rate deviation flagged"]
+  }
+];
+
 const WorkflowPlanPanel: React.FC<WorkflowPlanPanelProps> = ({ isOpen, onClose, plan }) => {
+  const displayPlan = plan && plan.length > 0 ? plan : HARDCODED_PLAN;
+
   return (
     <>
       {/* Backdrop */}
@@ -39,15 +70,15 @@ const WorkflowPlanPanel: React.FC<WorkflowPlanPanelProps> = ({ isOpen, onClose, 
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-white">
-          {!plan || plan.length === 0 ? (
+          {!displayPlan || displayPlan.length === 0 ? (
             <div className="text-center text-gray-500 py-12">
               No workflow plan available for this control.
             </div>
           ) : (
-            plan.map((section, idx) => (
+            displayPlan.map((section, idx) => (
               <div key={idx} className="relative pl-6">
                 {/* Visual Timeline Connector */}
-                {idx !== plan.length - 1 && (
+                {idx !== displayPlan.length - 1 && (
                   <div className="absolute left-[3px] top-6 bottom-[-32px] w-0.5 bg-gray-200"></div>
                 )}
                 {/* Node Bullet */}
@@ -56,7 +87,7 @@ const WorkflowPlanPanel: React.FC<WorkflowPlanPanelProps> = ({ isOpen, onClose, 
                 <h3 className="text-base font-bold text-gray-900 mb-2">{section.title}</h3>
                 
                 {section.description && (
-                  <p className="text-sm text-gray-600 mb-4">{section.description}</p>
+                  <p className="text-sm text-gray-600 mb-4 whitespace-pre-wrap">{section.description}</p>
                 )}
 
                 {(section.listItems && section.listItems.length > 0) && (

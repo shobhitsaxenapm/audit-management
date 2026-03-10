@@ -111,7 +111,6 @@ const TestScriptHeader: React.FC<{
       <h3 className="text-base font-semibold text-gray-900">
         Control & Test Script Information
       </h3>
-      {controlDetails.testScript && (
         <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-3">
           <button
             onClick={() =>
@@ -134,16 +133,13 @@ const TestScriptHeader: React.FC<{
           >
             Download Test Script
           </button>
-          {controlDetails.testScript.workflowPlan && (
-            <button
-              onClick={onViewWorkflowPlan}
-              className="rounded-md bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-100 transition-colors"
-            >
-              View Workflow Plan
-            </button>
-          )}
+          <button
+            onClick={onViewWorkflowPlan}
+            className="rounded-md bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-100 transition-colors"
+          >
+            View Workflow Plan
+          </button>
         </div>
-      )}
     </div>
 
     {/* B. METADATA GRID */}
@@ -1378,6 +1374,12 @@ const TestingWorkspacePage: React.FC<{
           onClose={() => setShowSampleReportModal(false)}
         />
       )}
+
+      <WorkflowPlanPanel
+        isOpen={isWorkflowPlanOpen}
+        onClose={() => setIsWorkflowPlanOpen(false)}
+        plan={controlDetails.testScript?.workflowPlan}
+      />
     </div>
   );
 };
