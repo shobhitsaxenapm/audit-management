@@ -360,7 +360,7 @@ pattern = r"const \[resultsState.*?(\s*const currentSampleExecutionResults = use
 
 match = re.search(pattern, content, flags=re.DOTALL)
 if match:
-    new_content = content[:match.start()] + new_state_block + match.group(1) + content[match.end():]
+    new_content = re.sub(pattern, lambda m: new_state_block + m.group(1), content, count=1, flags=re.DOTALL)
     with open("components/TestingWorkspacePage.tsx", "w", encoding="utf-8") as f:
         f.write(new_content)
     print("Successfully replaced state block.")

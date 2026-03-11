@@ -11,6 +11,7 @@ export interface RACM {
   linkedEngagements: number;
   lastUpdated: string;
   owner: string;
+  importedDetails?: RACMDetail[];
 }
 
 export type SortDirection = 'ascending' | 'descending';

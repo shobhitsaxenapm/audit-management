@@ -30,7 +30,7 @@ const StatusBadge: React.FC<{ status: RACMStatus }> = ({ status }) => {
 }
 
 const RACMBuilderPage: React.FC<RACMBuilderPageProps> = ({ racm, onBack }) => {
-  const [rows, setRows] = useState<RACMDetail[]>(racmBuilderData);
+  const [rows, setRows] = useState<RACMDetail[]>(racm.importedDetails || racmBuilderData);
   const [racmStatus, setRACMStatus] = useState<RACMStatus>(racm.locked ? 'Locked' : 'Draft');
   const [selectedRowIds, setSelectedRowIds] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');

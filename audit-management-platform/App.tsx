@@ -88,9 +88,12 @@ export default function App() {
     }
     
     if (selectedEngagement) {
+      const isAmz = selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT';
+      const engagementControls = finalControls.filter(c => isAmz ? c.controlId.startsWith('C-') : c.controlId.startsWith('ITGC-'));
+      
       // Recalculate engagement summary data based on the latest controls state
-      const newDeficiencies = finalControls.filter(c => c.conclusion === 'Ineffective').length;
-      const newStatus = calculateEngagementStatus(finalControls);
+      const newDeficiencies = engagementControls.filter(c => c.conclusion === 'Ineffective').length;
+      const newStatus = calculateEngagementStatus(engagementControls);
       
       const updatedEngagement = {
         ...selectedEngagement,
@@ -113,8 +116,11 @@ export default function App() {
     setControls(finalControls);
     
     if (selectedEngagement) {
-      const engagementDeficiencies = finalControls.filter(c => c.conclusion === 'Ineffective').length;
-      const newStatus = calculateEngagementStatus(finalControls);
+      const isAmz = selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT';
+      const engagementControls = finalControls.filter(c => isAmz ? c.controlId.startsWith('C-') : c.controlId.startsWith('ITGC-'));
+      
+      const engagementDeficiencies = engagementControls.filter(c => c.conclusion === 'Ineffective').length;
+      const newStatus = calculateEngagementStatus(engagementControls);
       
       const updatedEngagement = {
           ...selectedEngagement,
@@ -155,9 +161,15 @@ export default function App() {
           setSelectedEngagement(updatedEngagement);
           setEngagements(prev => prev.map(e => e.id === updatedEngagement.id ? updatedEngagement : e));
         };
+        const filteredControls = controls.filter(c => {
+          if (selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT') {
+            return c.controlId.startsWith('C-');
+          }
+          return c.controlId.startsWith('ITGC-');
+        });
         return <EngagementWorkspacePage 
                   engagement={selectedEngagement}
-                  controls={controls}
+                  controls={filteredControls}
                   onBack={handleReturnToEngagementList} 
                   onPerformTesting={handlePerformTesting}
                   onReviewControl={handleReviewControl}
@@ -168,6 +180,7 @@ export default function App() {
                 engagements={engagements}
                 setEngagements={setEngagements}
                 controls={controls}
+                setControls={setControls}
                 racms={racmData}
                 onSelectEngagement={handleSelectEngagement} 
              />;

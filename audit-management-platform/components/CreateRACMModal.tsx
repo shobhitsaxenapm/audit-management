@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import type { RACM } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import type { RACM, RACMDetail } from '../types';
 import { UploadIcon, CloseIcon, ChevronDownIcon } from './icons/Icons';
+import { HARDCODED_RACM_NAME, HARDCODED_RACM_DESCRIPTION, hardcodedRacmDetails } from '../utils/importRacm';
 
-type FormData = Omit<RACM, 'id' | 'version' | 'status' | 'locked' | 'linkedEngagements' | 'lastUpdated'> & { description?: string };
+type FormData = Omit<RACM, 'id' | 'version' | 'status' | 'locked' | 'linkedEngagements' | 'lastUpdated'> & { description?: string; importedDetails?: RACMDetail[] };
 
 interface CreateRACMModalProps {
   isOpen: boolean;
@@ -17,7 +18,8 @@ const INITIAL_FORM_STATE: FormData = {
   owner: '',
   framework: '',
   financialYear: '',
-  description: ''
+  description: '',
+  importedDetails: undefined,
 };
 
 const RACM_OWNERS = ["Aarav Mehta", "Riya Sharma", "Kabir Shah", "Neha Patel"];
@@ -28,12 +30,15 @@ const CreateRACMModal: React.FC<CreateRACMModalProps> = ({ isOpen, onClose, onSu
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDirty, setIsDirty] = useState(false);
+  const [importedFileName, setImportedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(INITIAL_FORM_STATE);
       setErrors({});
       setIsDirty(false);
+      setImportedFileName(null);
     }
   }, [isOpen]);
 
@@ -103,9 +108,31 @@ const CreateRACMModal: React.FC<CreateRACMModalProps> = ({ isOpen, onClose, onSu
     }
   };
 
+  const handleImportHardcodedRACM = () => {
+    // Trigger the hidden file input instead of immediately loading data
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImportedFileName(file.name);
+      setFormData(prev => ({
+        ...prev,
+        importedDetails: hardcodedRacmDetails
+      }));
+      setIsDirty(true);
+    }
+    // Reset file input so the same file could be selected again if needed
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
+
   if (!isOpen) return null;
   
   const isFormValid = Object.keys(errors).length === 0 && isDirty;
+  const hasImportedData = formData.importedDetails && formData.importedDetails.length > 0;
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-40 flex items-center justify-center" aria-modal="true" role="dialog">
@@ -124,6 +151,28 @@ const CreateRACMModal: React.FC<CreateRACMModalProps> = ({ isOpen, onClose, onSu
         
         <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-6">
           <div className="space-y-6">
+            
+            {hasImportedData && (
+              <div className="bg-green-50 border border-green-200 rounded-md p-4 flex items-start gap-3">
+                <div className="flex-shrink-0">
+                   <svg className="h-5 w-5 text-green-400 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-green-800">
+                    File Imported: <span className="font-bold">{importedFileName}</span>
+                  </h3>
+                  <div className="mt-1 text-sm text-green-700">
+                    <p className="font-semibold mb-1">Imported Data Ready</p>
+                    <p>
+                      {formData.importedDetails?.filter((d: any, i: number, arr: any[]) => arr.findIndex(x => x.riskId === d.riskId) === i).length} risks, {formData.importedDetails?.length} controls
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-gray-500">Version</label>
               <p className="mt-1 text-base font-semibold text-gray-800">V 1.0</p>
@@ -217,18 +266,39 @@ const CreateRACMModal: React.FC<CreateRACMModalProps> = ({ isOpen, onClose, onSu
           </div>
         </form>
         
-        <footer className="px-6 py-4 border-t border-gray-200 flex justify-end items-center gap-3">
-          <button type="button" onClick={onClose} className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-            Back
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={!isFormValid}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Done
-          </button>
+        <footer className="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-lg">
+          <div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              accept=".xlsx,.xls,.csv" 
+              onChange={handleFileSelect} 
+            />
+            {!hasImportedData && (
+              <button 
+                type="button" 
+                onClick={handleImportHardcodedRACM}
+                className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 space-x-2"
+              >
+                <UploadIcon className="h-4 w-4 text-gray-500" />
+                <span>Import RACM</span>
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={handleClose} className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+              Back
+            </button>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={!isFormValid}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Done
+            </button>
+          </div>
         </footer>
       </div>
     </div>

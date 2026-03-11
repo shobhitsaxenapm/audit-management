@@ -4,7 +4,10 @@ with open("components/TestingWorkspacePage.tsx", "r", encoding="utf-8") as f:
     content = f.read()
 
 # Fix SampleModel import
-if "import type {" in content and "SampleModel" not in content[:content.find("\n", content.find("import type {"))]:
+import_line_start: int = content.find("import type {")
+import_line_end: int = content.find("\n", import_line_start) if import_line_start != -1 else -1
+
+if import_line_start != -1 and import_line_end != -1 and content.find("SampleModel", 0, import_line_end) == -1:
     if "import type {" in content and "} from '../types';" in content:
         content = re.sub(r'import type \{([^}]+)\} from "\.\./types";', r'import type {\1, SampleModel} from "../types";', content)
 

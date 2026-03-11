@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { Engagement, NewEngagementData, RACM, EngagementType } from '../types';
 import { LEAD_PARTNERS, ENGAGEMENT_TYPES } from '../constants';
 import { CloseIcon, ChevronDownIcon, CalendarIcon, InfoCircleIcon } from './icons/Icons';
+import { AMZ_RACM_ID } from '../utils/importRacm';
 
 interface CreateEngagementModalProps {
   isOpen: boolean;
@@ -71,10 +72,11 @@ const CreateEngagementModal: React.FC<CreateEngagementModalProps> = ({ isOpen, o
     // A simple mapping for other types
     const frameworkMap: Record<string, string> = { 'Internal Audit': 'Internal', 'IT Audit': 'ITGC' };
     const targetFramework = frameworkMap[formData.type];
-    if (targetFramework) {
-        return racmList.filter(r => r.framework === targetFramework);
-    }
-    return racmList;
+    const filtered = targetFramework 
+        ? racmList.filter(r => r.framework === targetFramework)
+        : racmList;
+        
+    return [{ id: AMZ_RACM_ID, name: 'RACM AMZ TRANSPORT' }, ...filtered];
   }, [formData.type, racmList]);
 
 

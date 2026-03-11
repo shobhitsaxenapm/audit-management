@@ -7,16 +7,18 @@ import EngagementTable from './EngagementTable';
 import EngagementFilterModal from './EngagementFilterModal';
 import CreateEngagementModal from './CreateEngagementModal';
 import Toast from './Toast';
+import { AMZ_RACM_ID, amzTransportEngagementControls } from '../utils/importRacm';
 
 interface EngagementListPageProps {
     engagements: Engagement[];
     setEngagements: React.Dispatch<React.SetStateAction<Engagement[]>>;
     controls: EngagementControl[];
+    setControls: React.Dispatch<React.SetStateAction<EngagementControl[]>>;
     racms: RACM[];
     onSelectEngagement: (engagement: Engagement) => void;
 }
 
-const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, setEngagements, controls, racms, onSelectEngagement }) => {
+const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, setEngagements, controls, setControls, racms, onSelectEngagement }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeSummaryFilter, setActiveSummaryFilter] = useState<EngagementSummaryFilter | null>(null);
     const [sortConfig, setSortConfig] = useState<EngagementSortConfig>({ key: 'name', direction: 'ascending' });
@@ -123,10 +125,19 @@ const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, se
             period: getPeriod(data.periodStart),
             totalDeficiencies: 0,
             status: 'PLANNING',
-            linkedRacmName: data.linkedRacmId ? racms.find(r => r.id === data.linkedRacmId)?.name : undefined,
+            linkedRacmName: data.linkedRacmId ? (data.linkedRacmId === AMZ_RACM_ID ? 'RACM AMZ TRANSPORT' : racms.find(r => r.id === data.linkedRacmId)?.name) : undefined,
             leadPartner: data.leadPartner,
             description: data.description,
         };
+
+        if (data.linkedRacmId === AMZ_RACM_ID) {
+            setControls(prev => {
+                const alreadyAdded = prev.some(c => c.controlId.startsWith('C-'));
+                if (alreadyAdded) return prev;
+                return [...amzTransportEngagementControls, ...prev];
+            });
+        }
+
         setEngagements(prev => [newEngagement, ...prev]);
         setIsNewEngagementModalOpen(false);
         showToast("Engagement created successfully.");
