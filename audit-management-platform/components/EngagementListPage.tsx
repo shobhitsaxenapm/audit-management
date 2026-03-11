@@ -118,6 +118,7 @@ const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, se
             return `Q4 ${year}`;
         }
 
+        const linkedRacmIdNum = data.linkedRacmId ? Number(data.linkedRacmId) : undefined;
         const newEngagement: Engagement = {
             id: Date.now(),
             name: data.name,
@@ -125,12 +126,12 @@ const EngagementListPage: React.FC<EngagementListPageProps> = ({ engagements, se
             period: getPeriod(data.periodStart),
             totalDeficiencies: 0,
             status: 'PLANNING',
-            linkedRacmName: data.linkedRacmId ? (data.linkedRacmId === AMZ_RACM_ID ? 'RACM AMZ TRANSPORT' : racms.find(r => r.id === data.linkedRacmId)?.name) : undefined,
+            linkedRacmName: linkedRacmIdNum ? (linkedRacmIdNum === AMZ_RACM_ID ? 'RACM AMZ TRANSPORT' : racms.find(r => r.id === linkedRacmIdNum)?.name) : undefined,
             leadPartner: data.leadPartner,
             description: data.description,
         };
 
-        if (data.linkedRacmId === AMZ_RACM_ID) {
+        if (linkedRacmIdNum === AMZ_RACM_ID) {
             setControls(prev => {
                 const alreadyAdded = prev.some(c => c.controlId.startsWith('C-'));
                 if (alreadyAdded) return prev;

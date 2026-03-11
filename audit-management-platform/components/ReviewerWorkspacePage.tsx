@@ -119,7 +119,7 @@ const SampleDetailDrawer: React.FC<{ sample: SampleRecord, controlDetails: Contr
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y">
-                        {controlDetails.attributes.map(attr => {
+                        {controlDetails.attributes ? controlDetails.attributes.map(attr => {
                             const isFail = !attr.ruleLogic(sample);
                             return (
                                 <tr key={attr.attributeId} className={isFail ? 'bg-red-50' : ''}>
@@ -131,7 +131,24 @@ const SampleDetailDrawer: React.FC<{ sample: SampleRecord, controlDetails: Contr
                                     <td className="px-4 py-3 text-sm text-indigo-600 font-medium">{sample.evidence || 'N/A'}</td>
                                 </tr>
                             );
-                        })}
+                        }) : ((controlDetails.testScript?.rules || []).map(rule => {
+                             // Match sample attribute result if available
+                             const attrResult = sample.attributeResults?.find((ar: any) => ar.attributeId === rule.id);
+                             const systemPass = attrResult?.systemResult === 'PASS';
+                             const auditorResult = attrResult?.auditorResult;
+                             const effectivePass = auditorResult !== null ? auditorResult === 'PASS' : systemPass;
+                             
+                             return (
+                                <tr key={rule.id} className={!effectivePass ? 'bg-red-50' : ''}>
+                                    <td className="px-4 py-3 text-sm text-gray-800">{rule.description}</td>
+                                    <td className="px-4 py-3 text-sm font-semibold">
+                                        <span className={!effectivePass ? 'text-red-600' : 'text-green-600'}>{!effectivePass ? 'Fail' : 'Pass'}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{attrResult?.comments || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-indigo-600 font-medium">{attrResult?.evidenceReferences?.join(', ') || 'N/A'}</td>
+                                </tr>
+                             );
+                        }))}
                         </tbody>
                     </table>
                 </main>
@@ -272,15 +289,15 @@ const ReviewerWorkspacePage: React.FC<ReviewerWorkspacePageProps> = ({ control, 
                             </thead>
                             <tbody className="bg-white divide-y">
                                 {controlDetails.samples.map((sample, i) => {
-                                    const isFail = sample.finalResult === 'Fail';
+                                    const isFail = sample.status === 'FAIL';
                                     return (
                                     <tr key={i}>
                                         <td className="px-4 py-3 text-sm">{sample.sampleId || 'N/A'}</td>
-                                        <td className="px-4 py-3 text-sm">{sample.primaryIdentifier || 'Unknown'}</td>
-                                        <td className="px-4 py-3 text-sm">{sample.terminationDate}</td>
-                                        <td className="px-4 py-3 text-sm">{sample.revocationTimeHours}</td>
+                                        <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.employeeId || sample.sourceRowReference?.jobId || sample.primaryIdentifier || 'Unknown'}</td>
+                                        <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.terminationDate || 'N/A'}</td>
+                                        <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.revocationTimeHours || 'N/A'}</td>
                                         <td className="px-4 py-3 text-sm font-semibold">
-                                            <span className={isFail ? 'text-red-600' : 'text-green-600'}>{sample.finalResult}</span>
+                                            <span className={isFail ? 'text-red-600' : 'text-green-600'}>{sample.status}</span>
                                         </td>
                                         <td className="px-4 py-3 text-sm">
                                             <button onClick={() => setSelectedSample(sample)} className="text-indigo-600 hover:underline">View Details</button>

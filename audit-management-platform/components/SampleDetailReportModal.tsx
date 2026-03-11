@@ -57,7 +57,7 @@ const SampleDetailReportModal: React.FC<SampleDetailReportModalProps> = ({
     setTimeout(() => { w.print(); w.close(); }, 400);
   };
 
-  const recordData = sample.recordData || {};
+  const recordData = sample.sourceRowReference || sample.recordData || {};
   const hasRecordData = Object.keys(recordData).length > 0;
   const uploadedEvidence = evidence.filter(ev => !!ev.fileName);
   const missingEvidence = evidence.filter(ev => !ev.fileName);
@@ -187,7 +187,7 @@ const SampleDetailReportModal: React.FC<SampleDetailReportModalProps> = ({
                   </thead>
                   <tbody>
                     {attributes.map((attr, i) => (
-                      <tr key={attr.evidenceId} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
+                      <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
                         <td className="px-3 py-2 border border-gray-200 text-gray-500 font-medium">{String.fromCharCode(65 + i)}</td>
                         <td className="px-3 py-2 border border-gray-200 text-gray-800">{attr.name}</td>
                       </tr>

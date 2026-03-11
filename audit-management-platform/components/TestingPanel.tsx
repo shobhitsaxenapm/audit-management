@@ -33,10 +33,10 @@ const TestingPanel: React.FC<TestingPanelProps> = ({ sample, attributes, results
       <div className="mb-6">
         <h3 className="text-base font-semibold text-gray-800 mb-3">Sample Details</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm p-4 border border-gray-200 rounded-lg bg-gray-50">
-          {Object.entries(sample).map(([key, value]) => (
+          {Object.entries(sample.sourceRowReference || {}).map(([key, value]) => (
             <div key={key}>
               <dt className="font-medium text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</dt>
-              <dd className="text-gray-900 font-semibold">{value ?? <span className="text-red-600 italic">null</span>}</dd>
+              <dd className="text-gray-900 font-semibold">{typeof value === 'object' ? '-' : String(value ?? '—')}</dd>
             </div>
           ))}
         </div>

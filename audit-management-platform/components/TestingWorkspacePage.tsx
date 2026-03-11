@@ -201,11 +201,11 @@ const SampleData: React.FC<{ recordData: Record<string, any>; dataSources: Contr
   const matchedRecords = dataSources
     .filter(ds => ds.matchingKey && ds.records && ds.records.length > 0)
     .map(ds => {
-      const sampleKeyValue = recordData[ds.matchingKey!];
-      const match = ds.records!.find(r => r[ds.matchingKey!] === sampleKeyValue);
+      const sampleKeyValue = ds.matchingKey ? recordData[ds.matchingKey] : undefined;
+      const match = ds.records?.find(r => ds.matchingKey && r[ds.matchingKey] === sampleKeyValue);
       return { dataset: ds, match, sampleKeyValue };
     })
-    .filter(m => m.match); // only show if there is actually a matching record
+    .filter(m => m.match);
 
   return (
     <div className="mb-6">
@@ -1163,9 +1163,9 @@ const TestingWorkspacePage: React.FC<{
                 <>
                   <SampleData recordData={currentSample.sourceRowReference} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
                   <RuleEvaluationTable
-                    rules={controlDetails.testScript!.rules}
+                    rules={controlDetails.testScript?.rules || []}
                     executionResults={currentSampleExecutionResults}
-                    auditorInputs={currentSample.attributeResults.reduce((acc, ar) => ({...acc, [ar.attributeId]: { override: ar.auditorResult, comment: ar.comments, evidence: '' }}), {})}
+                    auditorInputs={(currentSample.attributeResults || []).reduce((acc, ar) => ({...acc, [ar.attributeId]: { override: ar.auditorResult, comment: ar.comments, evidence: '' }}), {})}
                     onUpdate={handleUpdateRuleResult}
                     isLocked={overallStatus === "Submitted"}
                   />
@@ -1217,13 +1217,19 @@ const TestingWorkspacePage: React.FC<{
                 </>
               ) : (
                 <>
-                  <TestingPanel
-                    sample={currentSample}
-                    attributes={controlDetails.attributes!}
-                    results={currentSample.attributeResults.reduce((acc, ar) => ({...acc, [ar.attributeId]: { auditorResult: ar.auditorResult, comment: ar.comments, evidence: '' }}), {})}
-                    onUpdate={handleUpdateLegacyResult}
-                    isLocked={overallStatus === "Submitted"}
-                  />
+                  {controlDetails.attributes ? (
+                    <TestingPanel
+                      sample={currentSample}
+                      attributes={controlDetails.attributes}
+                      results={(currentSample.attributeResults || []).reduce((acc, ar) => ({...acc, [ar.attributeId]: { auditorResult: ar.auditorResult, comment: ar.comments, evidence: '' }}), {})}
+                      onUpdate={handleUpdateLegacyResult}
+                      isLocked={overallStatus === "Submitted"}
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-gray-500 italic">
+                      This control uses automated test rules. Review the evaluation results below.
+                    </div>
+                  )}
                   <div className="mt-6 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-800">Final Sample Result</h4>
@@ -1335,7 +1341,7 @@ const TestingWorkspacePage: React.FC<{
             disabled={
               summary.notTested > 0 ||
               overallStatus === "Submitted" ||
-              engagement.status !== "IN PROGRESS"
+              (engagement.status !== "IN PROGRESS" && engagement.status !== "PLANNING")
             }
             className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
           >
@@ -1382,7 +1388,7 @@ const TestingWorkspacePage: React.FC<{
           evidence={currentSample.evidence || []}
           sampleStatus={sampleStatuses[currentSample.sampleId] || 'NOT_TESTED'}
           systemDeterminedResult={systemDeterminedResult}
-          attributes={isDynamicTestScript ? controlDetails.testScript!.rules.map(r => ({id: r.id, name: r.description || r.name})) : controlDetails.attributes!.map(a => ({id: a.attributeId, name: a.name}))}
+          attributes={isDynamicTestScript ? (controlDetails.testScript?.rules || []).map(r => ({id: r.id, name: r.description || r.name})) : (controlDetails.attributes || []).map(a => ({id: a.attributeId, name: a.name}))}
           onClose={() => setShowSampleReportModal(false)}
         />
       )}

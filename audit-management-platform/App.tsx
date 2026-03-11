@@ -73,6 +73,12 @@ export default function App() {
   };
   
   const handlePerformTesting = (control: EngagementControl) => {
+    // Transition engagement status if it's in PLANNING (for new engagements)
+    if (selectedEngagement && selectedEngagement.status === 'PLANNING') {
+      const updatedEngagement = { ...selectedEngagement, status: 'IN PROGRESS' as const };
+      setSelectedEngagement(updatedEngagement);
+      setEngagements(prev => prev.map(e => e.id === updatedEngagement.id ? updatedEngagement : e));
+    }
     setSelectedControlForTesting(control);
   };
 
@@ -89,7 +95,10 @@ export default function App() {
     
     if (selectedEngagement) {
       const isAmz = selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT';
-      const engagementControls = finalControls.filter(c => isAmz ? c.controlId.startsWith('C-') : c.controlId.startsWith('ITGC-'));
+      const engagementControls = finalControls.filter(c => {
+        if (isAmz) return c.controlId.startsWith('C-');
+        return c.controlId.startsWith('ITGC-');
+      });
       
       // Recalculate engagement summary data based on the latest controls state
       const newDeficiencies = engagementControls.filter(c => c.conclusion === 'Ineffective').length;
@@ -117,7 +126,10 @@ export default function App() {
     
     if (selectedEngagement) {
       const isAmz = selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT';
-      const engagementControls = finalControls.filter(c => isAmz ? c.controlId.startsWith('C-') : c.controlId.startsWith('ITGC-'));
+      const engagementControls = finalControls.filter(c => {
+        if (isAmz) return c.controlId.startsWith('C-');
+        return c.controlId.startsWith('ITGC-');
+      });
       
       const engagementDeficiencies = engagementControls.filter(c => c.conclusion === 'Ineffective').length;
       const newStatus = calculateEngagementStatus(engagementControls);
