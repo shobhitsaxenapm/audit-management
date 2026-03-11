@@ -22,14 +22,6 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, onClos
     const [isUploaded, setIsUploaded] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const failCounts = useMemo(() => {
-        if (!data || !data.attributes) return {};
-        const counts: Record<number, number> = {};
-        data.attributes.forEach((attr: any) => {
-            counts[attr.attributeId] = data.samples.filter(sample => !attr.ruleLogic(sample)).length;
-        });
-        return counts;
-    }, [data]);
 
     if (!data) return null; // Or some fallback UI
 
@@ -97,7 +89,6 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, onClos
                                     <tr>
                                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-600 w-2/3">Attribute</th>
                                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Mandatory</th>
-                                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Fail Count</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -105,12 +96,6 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, onClos
                                         <tr key={attr.attributeId} className="hover:bg-gray-50">
                                             <td className="px-4 py-3 text-sm text-gray-800">{attr.name}</td>
                                             <td className="px-4 py-3 text-sm text-gray-800 font-semibold">{attr.mandatory ? 'Y' : 'N'}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {failCounts[attr.attributeId] > 0
-                                                    ? <span className="font-bold text-red-600">{failCounts[attr.attributeId]}</span>
-                                                    : <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                                                }
-                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
