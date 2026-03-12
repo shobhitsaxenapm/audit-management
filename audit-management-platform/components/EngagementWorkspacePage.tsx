@@ -171,6 +171,7 @@ const EngagementWorkspacePage: React.FC<EngagementWorkspacePageProps> = ({ engag
       {selectedControl && (
         <ControlDetailPanel 
           control={selectedControl} 
+          engagement={engagement}
           onClose={() => setSelectedControl(null)}
           onPerformTesting={() => handleNavigateToTesting(selectedControl)}
         />

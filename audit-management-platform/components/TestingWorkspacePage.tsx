@@ -20,6 +20,7 @@ import type {
   BulkUploadSession,
 } from "../types";
 import { DEFAULT_EVIDENCE_TYPES } from "../types";
+import { HARDCODED_RACM_NAME, AMZ_RACM_ID } from "../utils/importRacm";
 import { detailedControlData } from "../constants";
 import SampleNavigator from "./SampleNavigator";
 import TestingSummaryPanel from "./TestingSummary";
@@ -424,6 +425,11 @@ const TestingWorkspacePage: React.FC<{
 
   const isDynamicTestScript = !!controlDetails?.testScript;
 
+  const isAmzTransport = useMemo(
+    () => control.controlId === 'C-DR-01' && (engagement.linkedRacmName?.toUpperCase().includes('AMZ')),
+    [control.controlId, engagement.linkedRacmName]
+  );
+
     // Deep state representing the local working copy of all samples
   const [localSamples, setLocalSamples] = useState<SampleModel[]>(() => {
     if (!controlDetails) return [];
@@ -432,17 +438,50 @@ const TestingWorkspacePage: React.FC<{
       // 1. Initialize Evidence if missing
       let evidence = [...(sample.evidence || [])];
       if (evidence.length === 0) {
-        evidence = DEFAULT_EVIDENCE_TYPES.map((tmpl, idx) => ({
-          ...tmpl,
-          evidenceId: `${sample.sampleId}-ev-${idx}`,
-          sampleId: sample.sampleId
-        }));
+        // OVERRIDE for C-DR-01 + AMZ RACM
+        if (isAmzTransport) {
+          const amzEvidenceTypes = [
+            { evidenceType: 'BGV Report PDF', evidenceName: 'Background Verification Report', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+            { evidenceType: 'RC Document', evidenceName: 'Registration Certificate', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+            { evidenceType: 'Offer Letter', evidenceName: 'Employment Offer Letter', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+            { evidenceType: 'Aadhar Document', evidenceName: 'Identity Proof (Aadhar)', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
+          ];
+          evidence = amzEvidenceTypes.map((tmpl, idx) => ({
+            ...tmpl,
+            evidenceId: `${sample.sampleId}-ev-${idx}`,
+            sampleId: sample.sampleId
+          }));
+        } else {
+          evidence = DEFAULT_EVIDENCE_TYPES.map((tmpl, idx) => ({
+            ...tmpl,
+            evidenceId: `${sample.sampleId}-ev-${idx}`,
+            sampleId: sample.sampleId
+          }));
+        }
       }
 
       // 2. Initialize AttributeResults if missing
       let attributeResults = [...(sample.attributeResults || [])];
       if (attributeResults.length === 0) {
-        if (isDynamicTestScript && controlDetails.testScript) {
+        // OVERRIDE for C-DR-01 + AMZ RACM
+        if (isAmzTransport) {
+          const amzAttributes = ['Name Match', 'DL Verification Status', 'Criminal Record Check'];
+          attributeResults = amzAttributes.map((attrName, idx) => ({
+            attributeResultId: `${sample.sampleId}-attr-${idx}`,
+            sampleId: sample.sampleId,
+            controlInstanceId: sample.controlInstanceId,
+            attributeId: idx + 1,
+            attributeName: attrName,
+            expectedValue: true, // Assuming boolean check for these
+            actualValue: null,
+            readinessStatus: "pending",
+            systemResult: "NOT_APPLICABLE",
+            auditorResult: null,
+            comments: "",
+            evidenceReferences: [],
+            testedAt: ""
+          }));
+        } else if (isDynamicTestScript && controlDetails.testScript) {
           attributeResults = controlDetails.testScript.rules.map(r => ({
             attributeResultId: `${sample.sampleId}-${r.id}`,
             sampleId: sample.sampleId,
@@ -1011,9 +1050,11 @@ const TestingWorkspacePage: React.FC<{
               {/* Attributes to be Tested */}
               {currentSample && (controlDetails.attributes || controlDetails.testScript) && (() => {
                 // Build attribute list from either attributes or testScript rules
-                const attrList: { name: string; type: string }[] = controlDetails.testScript
-                  ? controlDetails.testScript.rules.map(r => ({ name: r.description || r.name, type: r.type }))
-                  : (controlDetails.attributes || []).map(a => ({ name: a.name, type: a.mandatory ? 'Mandatory' : 'Optional' }));
+                const attrList: { name: string; type: string }[] = isAmzTransport
+                  ? ['Name Match', 'DL Verification Status', 'Criminal Record Check'].map(name => ({ name, type: 'Mandatory' }))
+                  : controlDetails.testScript
+                    ? controlDetails.testScript.rules.map(r => ({ name: r.description || r.name, type: r.type }))
+                    : (controlDetails.attributes || []).map(a => ({ name: a.name, type: a.mandatory ? 'Mandatory' : 'Optional' }));
 
                 if (attrList.length === 0) return null;
 

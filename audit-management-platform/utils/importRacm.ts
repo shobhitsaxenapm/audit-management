@@ -1,6 +1,6 @@
 import type { RACMDetail, EngagementControl } from '../types';
 
-export const HARDCODED_RACM_NAME = "RACM AMZ Transport Compliance";
+export const HARDCODED_RACM_NAME = "RACM AMZ TRANSPORT";
 export const HARDCODED_RACM_DESCRIPTION = "Amazon transport compliance RACM imported via hardcoded setup";
 export const AMZ_RACM_ID = 9999;
 

@@ -94,7 +94,7 @@ export default function App() {
     }
     
     if (selectedEngagement) {
-      const isAmz = selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT';
+      const isAmz = selectedEngagement.linkedRacmName?.toUpperCase().includes('AMZ');
       const engagementControls = finalControls.filter(c => {
         if (isAmz) return c.controlId.startsWith('C-');
         return c.controlId.startsWith('ITGC-');
@@ -125,7 +125,7 @@ export default function App() {
     setControls(finalControls);
     
     if (selectedEngagement) {
-      const isAmz = selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT';
+      const isAmz = selectedEngagement.linkedRacmName?.toUpperCase().includes('AMZ');
       const engagementControls = finalControls.filter(c => {
         if (isAmz) return c.controlId.startsWith('C-');
         return c.controlId.startsWith('ITGC-');
@@ -174,7 +174,7 @@ export default function App() {
           setEngagements(prev => prev.map(e => e.id === updatedEngagement.id ? updatedEngagement : e));
         };
         const filteredControls = controls.filter(c => {
-          if (selectedEngagement.linkedRacmName === 'RACM AMZ TRANSPORT') {
+          if (selectedEngagement.linkedRacmName?.toUpperCase().includes('AMZ')) {
             return c.controlId.startsWith('C-');
           }
           return c.controlId.startsWith('ITGC-');

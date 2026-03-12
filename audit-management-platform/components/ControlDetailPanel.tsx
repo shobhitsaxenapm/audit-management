@@ -1,11 +1,13 @@
 
 import React, { useMemo, useState, useRef } from 'react';
-import type { EngagementControl, ControlFullDetail } from '../types';
-import { detailedControlData } from '../constants';
 import { CloseIcon, CheckCircleIcon } from './icons/Icons';
+import { HARDCODED_RACM_NAME, AMZ_RACM_ID } from '../utils/importRacm';
+import { detailedControlData } from '../constants';
+import type { Engagement, EngagementControl, ControlFullDetail } from '../types';
 
 interface ControlDetailPanelProps {
     control: EngagementControl;
+    engagement: Engagement;
     onClose: () => void;
     onPerformTesting: () => void;
 }
@@ -17,7 +19,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
     </div>
 );
 
-const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, onClose, onPerformTesting }) => {
+const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, engagement, onClose, onPerformTesting }) => {
     const data: ControlFullDetail | undefined = detailedControlData[control.controlId];
     const [isUploaded, setIsUploaded] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,12 +94,24 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, onClos
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {data.attributes.map((attr: any) => (
-                                        <tr key={attr.attributeId} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm text-gray-800">{attr.name}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-800 font-semibold">{attr.mandatory ? 'Y' : 'N'}</td>
-                                        </tr>
-                                    ))}
+                                    {/* OVERRIDE for C-DR-01 + AMZ RACM */}
+                                    {control.controlId === 'C-DR-01' && (engagement.linkedRacmName?.toUpperCase().includes('AMZ')) ? (
+                                        <>
+                                            {['Name Match', 'DL Verification Status', 'Criminal Record Check'].map((name, i) => (
+                                                <tr key={i} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-800">{name}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-800 font-semibold">Y</td>
+                                                </tr>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        data.attributes.map((attr: any) => (
+                                            <tr key={attr.attributeId} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-sm text-gray-800">{attr.name}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-800 font-semibold">{attr.mandatory ? 'Y' : 'N'}</td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         ) : (
