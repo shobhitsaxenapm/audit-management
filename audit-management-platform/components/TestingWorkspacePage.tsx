@@ -41,6 +41,12 @@ import type { WorkflowPlanStep } from "../types";
 
 // --- HELPER & SUB-COMPONENTS (scoped to this file) ---
 
+const DEFAULT_AMZ_WORKFLOW_PLAN: WorkflowPlanStep[] = [
+  { id: 1, actionType: 'Extract', description: 'Extract Driver Background Verification (BGV) data from the HR onboarding system for the selected sampling period.' },
+  { id: 2, actionType: 'Match', description: 'Match the extracted BGV records with the physical evidence documents (BGV PDF, Offer Letter, Aadhar, RC).' },
+  { id: 3, actionType: 'Verify', description: 'Verify that each mandatory check (Name Match, DL Verification, Criminal Check) is documented and passed in the evidence.' }
+];
+
 const RuleLogicTooltip: React.FC<{ logic: RuleLogic }> = ({ logic }) => {
   return (
     <div className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded-md p-2 w-64 z-10 -mt-24 -ml-4 shadow-lg">
@@ -1437,7 +1443,7 @@ const TestingWorkspacePage: React.FC<{
       <WorkflowInspectorPanel
         isOpen={isWorkflowPlanOpen}
         onClose={() => setIsWorkflowPlanOpen(false)}
-        plan={controlDetails.testScript?.workflowPlan}
+        plan={controlDetails.testScript?.workflowPlan || (isAmzTransport ? DEFAULT_AMZ_WORKFLOW_PLAN : undefined)}
       />
     </div>
   );
