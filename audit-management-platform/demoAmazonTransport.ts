@@ -1,9 +1,23 @@
+// TEMP_DEMO_AMAZON_TRANSPORT: hardcoded RACM for demo
+export const documentDataAmazonRacm: RACM = {
+  id: 101,
+  name: "AMZ TRANSPORT",
+  framework: "Operational",
+  financialYear: "FY 2026",
+  version: "v1.0",
+  status: "Active",
+  locked: true,
+  linkedEngagements: 1,
+  lastUpdated: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+  owner: "Aarav Mehta"
+};
+
 // TEMP_DEMO_AMAZON_TRANSPORT: hardcoded CEO demo engagement
 // TEMP_DEMO_AMAZON_TRANSPORT: hardcoded 18-control demo data
 // TEMP_DEMO_AMAZON_TRANSPORT: safe to remove after demo
 // TEMP_DEMO_AMAZON_TRANSPORT: side panel content for CEO demo controls — remove this entire file to revert
 
-import type { Engagement, EngagementControl, ControlFullDetail, SampleModel } from './types';
+import type { Engagement, EngagementControl, ControlFullDetail, SampleModel, RACM } from './types';
 
 // TEMP_DEMO_AMAZON_TRANSPORT: side panel detail data for all 18 ATC controls
 // To revert: delete this export entirely (or delete this file)
@@ -368,7 +382,8 @@ export const documentDataAmazonControls: EngagementControl[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 // TEMP_DEMO_AMAZON_TRANSPORT: population size shown in sampling UI
-export const ATC_POPULATION_COUNT = 1250;
+// Updated to 5 per user request for ATC-03 and ATC-10 consistency
+export const ATC_POPULATION_COUNT = 5;
 
 // TEMP_DEMO_AMAZON_TRANSPORT: evidence type templates per ATC control
 // Used in TestingWorkspacePage to initialise per-sample evidence slots

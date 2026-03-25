@@ -35,9 +35,9 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, engage
     if (!isAtcControl && !data) return null; // Or some fallback UI
     if (isAtcControl && !atcData) return null;
 
-    // TEMP_DEMO_AMAZON_TRANSPORT: ATC controls are always fresh/not-started — never testable without upload
+    // TEMP_DEMO_AMAZON_TRANSPORT: ATC controls are always testable by default to skip upload step
     const isTestable = isAtcControl
-        ? isUploaded
+        ? true
         : ((data!.samples.length > 0 && data!.snapshot?.status === 'Frozen') || isUploaded);
 
     let disabledReason = '';
@@ -142,13 +142,13 @@ const ControlDetailPanel: React.FC<ControlDetailPanelProps> = ({ control, engage
                                 className="hidden"
                                 accept=".csv,.xlsx,.xls"
                             />
-                            <button
+                            {/* TEMP_DEMO_AMAZON_TRANSPORT: Remove 'Upload Population' button as requested */}
+                            {/* <button
                                 type="button"
                                 onClick={handleUploadClick}
                                 className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-300 hover:bg-indigo-50">
-                                {/* TEMP_DEMO_AMAZON_TRANSPORT: Upload Sample -> Upload Population */}
                                 Upload Population
-                            </button>
+                            </button> */}
 
                             <button
                                 type="button"

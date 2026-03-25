@@ -9,8 +9,8 @@ import EngagementWorkspacePage from './components/EngagementWorkspacePage';
 import TestingWorkspacePage from './components/TestingWorkspacePage';
 import ReviewerWorkspacePage from './components/ReviewerWorkspacePage';
 import { engagementData, engagementControlsData, racmData } from './constants';
-// TEMP_DEMO_AMAZON_TRANSPORT: hardcoded CEO demo engagement
-import { documentDataAmazonEngagement, documentDataAmazonControls } from './demoAmazonTransport';
+// TEMP_DEMO_AMAZON_TRANSPORT: hardcoded CEO demo data
+import { documentDataAmazonEngagement, documentDataAmazonControls, documentDataAmazonRacm } from './demoAmazonTransport';
 
 export type Page = 'racm' | 'engagements';
 
@@ -219,7 +219,8 @@ export default function App() {
                 setEngagements={setEngagements}
                 controls={controls}
                 setControls={setControls}
-                racms={racmData}
+                // TEMP_DEMO_AMAZON_TRANSPORT: only allow selecting AMZ TRANSPORT during demo
+                racms={[documentDataAmazonRacm]}
                 onSelectEngagement={handleSelectEngagement} 
              />;
     }

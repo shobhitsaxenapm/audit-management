@@ -2,6 +2,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type { RACM, SortConfig, SortKey, SummaryFilter } from '../types';
 import { racmData } from '../constants';
+// TEMP_DEMO_AMAZON_TRANSPORT: Import demo RACM data
+import { documentDataAmazonRacm } from '../demoAmazonTransport';
 import SummaryStrip from './SummaryStrip';
 import Toolbar from './Toolbar';
 import RACMTable from './RACMTable';
@@ -14,7 +16,8 @@ interface RACMListPageProps {
 }
 
 const RACMListPage: React.FC<RACMListPageProps> = ({ onSelectRACM }) => {
-    const [racms, setRacms] = useState<RACM[]>(racmData);
+    // TEMP_DEMO_AMAZON_TRANSPORT: show only one active AMZ RACM as requested
+    const [racms, setRacms] = useState<RACM[]>([documentDataAmazonRacm]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFramework, setSelectedFramework] = useState('All Frameworks');
     const [activeSummaryFilter, setActiveSummaryFilter] = useState<SummaryFilter | null>(null);

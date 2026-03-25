@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import type { Engagement, EngagementControl, ControlFullDetail, AuditTrailEntry, SampleRecord } from '../types';
 import { detailedControlData } from '../constants';
+// TEMP_DEMO_AMAZON_TRANSPORT: import demo details helper for ATC controls
+import { buildAtcControlDetails } from '../demoAmazonTransport';
 import { ChevronRightIcon, CheckCircleIcon, CloseIcon, InfoCircleIcon, UploadIcon } from './icons/Icons';
 import Toast from './Toast';
 
@@ -160,7 +162,15 @@ const SampleDetailDrawer: React.FC<{ sample: SampleRecord, controlDetails: Contr
 
 // --- MAIN COMPONENT ---
 const ReviewerWorkspacePage: React.FC<ReviewerWorkspacePageProps> = ({ control, engagement, onExit }) => {
-    const controlDetails = useMemo(() => detailedControlData[control.controlId], [control.controlId]);
+    // TEMP_DEMO_AMAZON_TRANSPORT: Detect ATC controls and use demo details if needed
+    const isAtcControl = control.controlId.startsWith('ATC-');
+
+    const controlDetails = useMemo(() => {
+        if (isAtcControl) {
+            return buildAtcControlDetails(control.controlId, control.controlName);
+        }
+        return detailedControlData[control.controlId];
+    }, [control.controlId, control.controlName, isAtcControl]);
     
     const [isRejectModalOpen, setRejectModalOpen] = useState(false);
     const [isDeficiencyModalOpen, setDeficiencyModalOpen] = useState(false);
@@ -175,10 +185,15 @@ const ReviewerWorkspacePage: React.FC<ReviewerWorkspacePageProps> = ({ control, 
         if (controlDetails && controlDetails.samples.length > 0 && controlDetails.samples[0].primaryIdentifierLabel) {
             return controlDetails.samples[0].primaryIdentifierLabel;
         }
+        if (isAtcControl) {
+            // ATC-03 Driving License uses Driver ID as primary identifier
+            if (control.controlId === 'ATC-03') return "Driver ID";
+            return "Record ID";
+        }
         return "Record ID";
-    }, [controlDetails]);
+    }, [controlDetails, isAtcControl, control.controlId]);
 
-    if (!controlDetails) return <div>Error loading control details.</div>;
+    if (!controlDetails) return <div className="p-8 text-center text-gray-500">Error: Control details not found for {control.controlId}.</div>;
 
     const summary = {
         totalSamples: controlDetails.samples.length,
@@ -277,30 +292,52 @@ const ReviewerWorkspacePage: React.FC<ReviewerWorkspacePageProps> = ({ control, 
                             </div>
                         )}
                         <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                            <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Sample ID</th>
                                     <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">{primaryIdentifierLabel}</th>
-                                    <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Termination Date</th>
-                                    <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Revocation Hours</th>
+                                    {!isAtcControl && (
+                                        <>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Termination Date</th>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Revocation Hours</th>
+                                        </>
+                                    )}
+                                    {isAtcControl && (
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Status</th>
+                                    )}
                                     <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Final Result</th>
                                     <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y">
-                                {controlDetails.samples.map((sample, i) => {
+                                {controlDetails.samples.map((sample: any, i: number) => {
                                     const isFail = sample.status === 'FAIL';
                                     return (
-                                    <tr key={i}>
-                                        <td className="px-4 py-3 text-sm">{sample.sampleId || 'N/A'}</td>
-                                        <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.employeeId || sample.sourceRowReference?.jobId || sample.primaryIdentifier || 'Unknown'}</td>
-                                        <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.terminationDate || 'N/A'}</td>
-                                        <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.revocationTimeHours || 'N/A'}</td>
+                                    <tr key={i} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{sample.sampleId || 'N/A'}</td>
+                                        <td className="px-4 py-3 text-sm">
+                                            {/* TEMP_DEMO_AMAZON_TRANSPORT: identifier mapping for ATC controls */}
+                                            {isAtcControl 
+                                                ? (sample.sourceRowReference && sample.sourceRowReference[primaryIdentifierLabel]) || sample.primaryIdentifier || '-'
+                                                : sample.primaryIdentifier || sample.sourceRowReference?.employeeId || '-'
+                                            }
+                                        </td>
+                                        {!isAtcControl && (
+                                            <>
+                                                <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.terminationDate || 'N/A'}</td>
+                                                <td className="px-4 py-3 text-sm">{sample.sourceRowReference?.revocationTimeHours || 'N/A'}</td>
+                                            </>
+                                        )}
+                                        {isAtcControl && (
+                                            <td className="px-4 py-3 text-sm">
+                                                <span className="text-gray-600">Submitted</span>
+                                            </td>
+                                        )}
                                         <td className="px-4 py-3 text-sm font-semibold">
-                                            <span className={isFail ? 'text-red-600' : 'text-green-600'}>{sample.status}</span>
+                                            <span className={isFail ? 'text-red-600' : 'text-green-600'}>{sample.status || 'PASS'}</span>
                                         </td>
                                         <td className="px-4 py-3 text-sm">
-                                            <button onClick={() => setSelectedSample(sample)} className="text-indigo-600 hover:underline">View Details</button>
+                                            <button onClick={() => setSelectedSample(sample)} className="text-indigo-600 hover:text-indigo-900 font-medium">View Details</button>
                                         </td>
                                     </tr>
                                 )})}
