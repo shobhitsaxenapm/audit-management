@@ -9,6 +9,8 @@ import EngagementWorkspacePage from './components/EngagementWorkspacePage';
 import TestingWorkspacePage from './components/TestingWorkspacePage';
 import ReviewerWorkspacePage from './components/ReviewerWorkspacePage';
 import { engagementData, engagementControlsData, racmData } from './constants';
+// TEMP_DEMO_AMAZON_TRANSPORT: hardcoded CEO demo engagement
+import { documentDataAmazonEngagement, documentDataAmazonControls } from './demoAmazonTransport';
 
 export type Page = 'racm' | 'engagements';
 
@@ -44,8 +46,9 @@ export default function App() {
   const [selectedControlForTesting, setSelectedControlForTesting] = useState<EngagementControl | null>(null);
   const [selectedControlForReview, setSelectedControlForReview] = useState<EngagementControl | null>(null);
   
-  const [engagements, setEngagements] = useState<Engagement[]>(engagementData);
-  const [controls, setControls] = useState<EngagementControl[]>(engagementControlsData);
+  // TEMP_DEMO_AMAZON_TRANSPORT: inject into list
+  const [engagements, setEngagements] = useState<Engagement[]>([documentDataAmazonEngagement, ...engagementData]);
+  const [controls, setControls] = useState<EngagementControl[]>([...documentDataAmazonControls, ...engagementControlsData]);
 
   const handlePageChange = (page: Page) => {
     setCurrentPage(page);
@@ -73,8 +76,8 @@ export default function App() {
   };
   
   const handlePerformTesting = (control: EngagementControl) => {
-    // Transition engagement status if it's in PLANNING (for new engagements)
-    if (selectedEngagement && selectedEngagement.status === 'PLANNING') {
+    // Transition engagement status if it's in PLANNING or NOT STARTED (for new demo engagements)
+    if (selectedEngagement && (selectedEngagement.status === 'PLANNING' || selectedEngagement.status === 'NOT STARTED')) {
       const updatedEngagement = { ...selectedEngagement, status: 'IN PROGRESS' as const };
       setSelectedEngagement(updatedEngagement);
       setEngagements(prev => prev.map(e => e.id === updatedEngagement.id ? updatedEngagement : e));
@@ -94,8 +97,16 @@ export default function App() {
     }
     
     if (selectedEngagement) {
-      const isAmz = selectedEngagement.linkedRacmName?.toUpperCase().includes('AMZ');
+      // TEMP_DEMO_AMAZON_TRANSPORT: debug log as requested
+      console.log("DEMO CHECK", selectedEngagement.linkedRacmName);
+      
+      // TEMP_DEMO_AMAZON_TRANSPORT: inject demo controls when RACM = AMZ TRANSPORT
+      const linkedRacm = selectedEngagement.linkedRacmName || "";
+      const isAmzTransport = linkedRacm.toUpperCase().includes('TRANSPORT') || linkedRacm.toUpperCase().includes('AMZ TRANSPORT');
+      const isAmz = linkedRacm.toUpperCase().includes('AMZ') && !isAmzTransport;
+
       const engagementControls = finalControls.filter(c => {
+        if (isAmzTransport) return c.controlId.startsWith('ATC-');
         if (isAmz) return c.controlId.startsWith('C-');
         return c.controlId.startsWith('ITGC-');
       });
@@ -125,8 +136,16 @@ export default function App() {
     setControls(finalControls);
     
     if (selectedEngagement) {
-      const isAmz = selectedEngagement.linkedRacmName?.toUpperCase().includes('AMZ');
+      // TEMP_DEMO_AMAZON_TRANSPORT: debug log as requested
+      console.log("DEMO CHECK", selectedEngagement.linkedRacmName);
+
+      // TEMP_DEMO_AMAZON_TRANSPORT: inject demo controls when RACM = AMZ TRANSPORT
+      const linkedRacm = selectedEngagement.linkedRacmName || "";
+      const isAmzTransport = linkedRacm.toUpperCase().includes('TRANSPORT') || linkedRacm.toUpperCase().includes('AMZ TRANSPORT');
+      const isAmz = linkedRacm.toUpperCase().includes('AMZ') && !isAmzTransport;
+
       const engagementControls = finalControls.filter(c => {
+        if (isAmzTransport) return c.controlId.startsWith('ATC-');
         if (isAmz) return c.controlId.startsWith('C-');
         return c.controlId.startsWith('ITGC-');
       });
@@ -173,10 +192,17 @@ export default function App() {
           setSelectedEngagement(updatedEngagement);
           setEngagements(prev => prev.map(e => e.id === updatedEngagement.id ? updatedEngagement : e));
         };
+        // TEMP_DEMO_AMAZON_TRANSPORT: debug log as requested
+        console.log("DEMO CHECK", selectedEngagement.linkedRacmName);
+
+        // TEMP_DEMO_AMAZON_TRANSPORT: inject demo controls when RACM = AMZ TRANSPORT
+        const linkedRacm = selectedEngagement.linkedRacmName || "";
+        const isAmzTransport = linkedRacm.toUpperCase().includes('TRANSPORT') || linkedRacm.toUpperCase().includes('AMZ TRANSPORT');
+        const isAmz = linkedRacm.toUpperCase().includes('AMZ') && !isAmzTransport;
+
         const filteredControls = controls.filter(c => {
-          if (selectedEngagement.linkedRacmName?.toUpperCase().includes('AMZ')) {
-            return c.controlId.startsWith('C-');
-          }
+          if (isAmzTransport) return c.controlId.startsWith('ATC-');
+          if (isAmz) return c.controlId.startsWith('C-');
           return c.controlId.startsWith('ITGC-');
         });
         return <EngagementWorkspacePage 

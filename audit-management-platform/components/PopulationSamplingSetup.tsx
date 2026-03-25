@@ -1,23 +1,34 @@
 import React, { useState, useEffect } from "react";
 import type { SampleModel, ControlDataSource } from "../types";
 import { UploadIcon, TableIcon, InfoCircleIcon } from "./icons/Icons";
+// TEMP_DEMO_AMAZON_TRANSPORT: population count for ATC sampling UI
+import { ATC_POPULATION_COUNT } from "../demoAmazonTransport";
 
 export type SetupStage = "population" | "generating" | "preview" | "complete";
 
 interface PopulationSamplingSetupProps {
   onComplete: () => void;
   mockSamples: SampleModel[];
+  // TEMP_DEMO_AMAZON_TRANSPORT: controlId enables ATC-specific sampling UI and demo delay
+  controlId?: string;
 }
 
 const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
   onComplete,
   mockSamples,
+  controlId,
 }) => {
   const [stage, setStage] = useState<SetupStage>("population");
-  
+
   // Selection State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedExisting, setSelectedExisting] = useState<string | null>(null);
+
+  // TEMP_DEMO_AMAZON_TRANSPORT: custom sampling flow for Driving License (ATC-03)
+  // Allows user to choose Random Sampling or Entire Population
+  const isDrivingLicenseControl = controlId === 'ATC-03';
+  const isAtcControl = controlId?.startsWith('ATC-') ?? false;
+  const [samplingMethod, setSamplingMethod] = useState<'random' | 'entire'>('random');
 
   // Generation Loader State
   const [loaderStep, setLoaderStep] = useState(0);
@@ -40,22 +51,26 @@ const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
   };
 
   // Simulate Generation Progress
+  // TEMP_DEMO_AMAZON_TRANSPORT: artificial delay for demo realism — ATC controls run slower
   useEffect(() => {
     if (stage === "generating") {
+      // TEMP_DEMO_AMAZON_TRANSPORT: artificial delay for demo realism
+      // ATC controls: ~7s total; standard controls: ~4.6s total
+      const base = isAtcControl ? 1400 : 800;
       const timers = [
-        setTimeout(() => setLoaderStep(1), 800),
-        setTimeout(() => setLoaderStep(2), 1600),
-        setTimeout(() => setLoaderStep(3), 2400),
-        setTimeout(() => setLoaderStep(4), 3200),
+        setTimeout(() => setLoaderStep(1), base),
+        setTimeout(() => setLoaderStep(2), base * 2),
+        setTimeout(() => setLoaderStep(3), base * 3),
+        setTimeout(() => setLoaderStep(4), base * 4),
         setTimeout(() => {
           setLoaderStep(5);
-          setTimeout(() => setStage("preview"), 600); // Wait a beat then show preview
-        }, 4000),
+          setTimeout(() => setStage("preview"), 600);
+        }, base * 5),
       ];
 
       return () => timers.forEach(clearTimeout);
     }
-  }, [stage]);
+  }, [stage, isAtcControl]);
 
   return (
     <div className="max-w-4xl mx-auto my-8 border border-gray-200 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col min-h-[500px]">
@@ -124,9 +139,12 @@ const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
                 )}
               </label>
 
-              {/* Option 2: Choose Existing */}
+              {/* Option 2: Choose Existing
+                  TEMP_DEMO_AMAZON_TRANSPORT: dataset name adapts to ATC controls */}
               <div
-                onClick={() => handleSelectExisting("Q3_Access_Review_Log")}
+                onClick={() => handleSelectExisting(
+                  isAtcControl ? "AMZ_Transport_Driver_Population" : "Q3_Access_Review_Log"
+                )}
                 className={`flex flex-col items-center justify-center p-6 border-2 rounded-lg cursor-pointer transition-all ${
                   selectedExisting
                     ? "border-indigo-500 bg-indigo-50"
@@ -142,7 +160,7 @@ const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
                 <span className="text-xs text-gray-500 mt-1 text-center">
                   Select from active workspace
                 </span>
-                
+
                 {selectedExisting && (
                   <div className="mt-4 pt-4 border-t border-indigo-200 w-full text-center">
                     <p className="text-sm font-medium text-indigo-900 truncate">
@@ -155,6 +173,48 @@ const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
                 )}
               </div>
             </div>
+
+            {/* TEMP_DEMO_AMAZON_TRANSPORT: Show Sampling Method for all ATC controls for demo consistency */}
+            {isAtcControl && (
+              <div className="mt-8 max-w-md mx-auto">
+                <p className="text-sm font-semibold text-gray-700 mb-3 text-center">Sampling Method</p>
+                <div className="flex gap-4">
+                  <label className={`flex-1 flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${samplingMethod === 'random' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                    <input
+                      type="radio"
+                      name="samplingMethod"
+                      value="random"
+                      checked={samplingMethod === 'random'}
+                      onChange={() => setSamplingMethod('random')}
+                      className="accent-indigo-600"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-gray-900">Random Sampling</span>
+                      <span className="block text-xs text-gray-500 mt-0.5">Select a representative subset</span>
+                    </span>
+                  </label>
+                  <label className={`flex-1 flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${samplingMethod === 'entire' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                    <input
+                      type="radio"
+                      name="samplingMethod"
+                      value="entire"
+                      checked={samplingMethod === 'entire'}
+                      onChange={() => setSamplingMethod('entire')}
+                      className="accent-indigo-600"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-gray-900">Entire Population</span>
+                      <span className="block text-xs text-gray-500 mt-0.5">Test all {ATC_POPULATION_COUNT.toLocaleString()} records</span>
+                    </span>
+                  </label>
+                </div>
+                {samplingMethod === 'entire' && (
+                  <p className="mt-3 text-xs text-center text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md py-2 px-3">
+                    All {ATC_POPULATION_COUNT.toLocaleString()} population records will be selected for testing.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mt-10 flex justify-center">
               <button
@@ -208,6 +268,7 @@ const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
         {/* STAGE 3: SAMPLE PREVIEW */}
         {stage === "preview" && (
           <div className="flex-grow flex flex-col">
+            {/* TEMP_DEMO_AMAZON_TRANSPORT: success banner varies by sampling method */}
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start gap-3">
                <div className="bg-green-100 rounded-full p-1 mt-0.5">
                  <svg className="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -215,24 +276,34 @@ const PopulationSamplingSetup: React.FC<PopulationSamplingSetupProps> = ({
                <div>
                  <h4 className="text-sm font-bold text-green-900">Sample Generation Complete</h4>
                  <p className="text-sm text-green-800 mt-1">
-                   Successfully extracted a randomized representative subset from the population dataset.
+                   {/* TEMP_DEMO_AMAZON_TRANSPORT: Entire Population success text for all ATC controls */}
+                   {isAtcControl && samplingMethod === 'entire'
+                     ? 'Successfully selected the full population for testing.'
+                     : 'Successfully extracted a randomized representative subset from the population dataset.'}
                  </p>
                </div>
             </div>
 
             {/* Metadata Bar */}
+            {/* TEMP_DEMO_AMAZON_TRANSPORT: show 1,250 / 1,250 when Entire Population selected */}
             <div className="grid grid-cols-3 gap-4 mb-6">
                <div className="bg-gray-50 border border-gray-200 rounded p-3 text-center">
                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Population Records</div>
-                 <div className="text-lg font-bold text-gray-900">1,250</div>
+                 <div className="text-lg font-bold text-gray-900">{ATC_POPULATION_COUNT.toLocaleString()}</div>
                </div>
                <div className="bg-gray-50 border border-gray-200 rounded p-3 text-center">
                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Samples Selected</div>
-                 <div className="text-lg font-bold text-indigo-600">{mockSamples.length}</div>
+                 <div className="text-lg font-bold text-indigo-600">
+                   {isAtcControl && samplingMethod === 'entire'
+                     ? ATC_POPULATION_COUNT.toLocaleString()
+                     : mockSamples.length}
+                 </div>
                </div>
                <div className="bg-gray-50 border border-gray-200 rounded p-3 text-center">
                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Sampling Method</div>
-                 <div className="text-lg font-bold text-gray-900">Random</div>
+                 <div className="text-lg font-bold text-gray-900">
+                   {isAtcControl && samplingMethod === 'entire' ? 'Entire Population' : 'Random'}
+                 </div>
                </div>
             </div>
 

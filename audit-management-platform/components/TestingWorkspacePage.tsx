@@ -22,11 +22,13 @@ import type {
 import { DEFAULT_EVIDENCE_TYPES } from "../types";
 import { HARDCODED_RACM_NAME, AMZ_RACM_ID } from "../utils/importRacm";
 import { detailedControlData } from "../constants";
+// TEMP_DEMO_AMAZON_TRANSPORT: import demo testing-flow helpers for ATC controls
+import { buildAtcControlDetails, getAtcEvidenceTemplates, ATC_POPULATION_COUNT } from "../demoAmazonTransport";
 import SampleNavigator from "./SampleNavigator";
 import TestingSummaryPanel from "./TestingSummary";
 import Toast from "./Toast";
 import TestingPanel from "./TestingPanel";
-import { ChevronRightIcon, UploadIcon, InfoCircleIcon, CloseIcon, TableIcon } from "./icons/Icons";
+import { ChevronRightIcon, UploadIcon, InfoCircleIcon, CloseIcon, TableIcon, CheckCircleIcon } from "./icons/Icons";
 import ControlDataSourcesSection from "./ControlDataSourcesSection";
 import DatasetPreviewModal from "./DatasetPreviewModal";
 import SampleEvidenceSection from "./SampleEvidenceSection";
@@ -424,9 +426,18 @@ const TestingWorkspacePage: React.FC<{
   engagement: Engagement;
   onExit: (c?: EngagementControl) => void;
 }> = ({ control, engagement, onExit }) => {
+  // TEMP_DEMO_AMAZON_TRANSPORT: detect ATC controls — use synthetic details instead of real data
+  const isAtcControl = control.controlId.startsWith('ATC-');
+
   const controlDetails: ControlFullDetail | undefined = useMemo(
-    () => detailedControlData[control.controlId],
-    [control.controlId],
+    () => {
+      // TEMP_DEMO_AMAZON_TRANSPORT: custom sampling flow — return synthetic details for ATC controls
+      if (isAtcControl) {
+        return buildAtcControlDetails(control.controlId, control.controlName);
+      }
+      return detailedControlData[control.controlId];
+    },
+    [isAtcControl, control.controlId, control.controlName],
   );
 
   const isDynamicTestScript = !!controlDetails?.testScript;
@@ -444,8 +455,23 @@ const TestingWorkspacePage: React.FC<{
       // 1. Initialize Evidence if missing
       let evidence = [...(sample.evidence || [])];
       if (evidence.length === 0) {
+        // TEMP_DEMO_AMAZON_TRANSPORT: ATC controls use control-specific evidence types
+        if (isAtcControl) {
+          const atcTemplates = getAtcEvidenceTemplates(control.controlId);
+          evidence = atcTemplates.map((tmpl, idx) => ({
+            ...tmpl,
+            evidenceId:       `${sample.sampleId}-ev-${idx}`,
+            sampleId:         sample.sampleId,
+            fileName:         null,
+            fileType:         '',
+            storageReference: null,
+            status:           'pending',
+            uploadedAt:       null,
+            uploadedBy:       '',
+            sourceOrigin:     'User',
+          }));
         // OVERRIDE for C-DR-01 + AMZ RACM
-        if (isAmzTransport) {
+        } else if (isAmzTransport) {
           const amzEvidenceTypes = [
             { evidenceType: 'BGV Report PDF', evidenceName: 'Background Verification Report', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
             { evidenceType: 'RC Document', evidenceName: 'Registration Certificate', fileName: '', fileType: '', storageReference: '', status: 'pending', uploadedAt: '', uploadedBy: '', sourceOrigin: 'User' },
@@ -469,6 +495,10 @@ const TestingWorkspacePage: React.FC<{
       // 2. Initialize AttributeResults if missing
       let attributeResults = [...(sample.attributeResults || [])];
       if (attributeResults.length === 0) {
+        // TEMP_DEMO_AMAZON_TRANSPORT: ATC controls use their own attribute list from buildAtcControlDetails
+        // The else-if (controlDetails.attributes) branch below handles this automatically;
+        // no special case needed here — falls through to the attributes branch.
+
         // OVERRIDE for C-DR-01 + AMZ RACM
         if (isAmzTransport) {
           const amzAttributes = ['Name Match', 'DL Verification Status', 'Criminal Record Check'];
@@ -545,6 +575,12 @@ const TestingWorkspacePage: React.FC<{
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSampleReportModal, setShowSampleReportModal] = useState(false);
   const [bulkUploadSession, setBulkUploadSession] = useState<BulkUploadSession | null>(null);
+
+  // TEMP_DEMO_AMAZON_TRANSPORT: testing loading experience state
+  const [isTestingProcessing, setIsTestingProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStep, setSubmissionStep] = useState(0);
 
   const openDataViewer = useCallback((ds: ControlDataSource, sampleKeyValue?: string) => {
     const datasetId = datasetNameToId[ds.filename] || datasetNameToId[controlDetails?.snapshot?.datasetName || ''];
@@ -650,8 +686,33 @@ const TestingWorkspacePage: React.FC<{
       showToast('Please upload all required evidence for every sample before running testing.');
       return;
     }
-    setTestingStep(2);
-    showToast('Testing executed. Review results below.');
+    
+    // TEMP_DEMO_AMAZON_TRANSPORT: staged processing animation for ATC controls
+    if (isAtcControl) {
+      setIsTestingProcessing(true);
+      setProcessingStep(0);
+      
+      const stepDuration = 1200; // ms
+      const steps = [
+        () => setProcessingStep(1),
+        () => setProcessingStep(2),
+        () => setProcessingStep(3),
+        () => setProcessingStep(4),
+        () => setProcessingStep(5),
+        () => {
+          setIsTestingProcessing(false);
+          setTestingStep(2);
+          showToast('Testing executed. Results ready for review.');
+        }
+      ];
+
+      steps.forEach((fn, idx) => {
+        setTimeout(fn, (idx + 1) * stepDuration);
+      });
+    } else {
+      setTestingStep(2);
+      showToast('Testing executed. Review results below.');
+    }
   };
 
   const showToast = (message: string) => {
@@ -831,6 +892,7 @@ const TestingWorkspacePage: React.FC<{
       alert("All samples must be tested before submitting for review.");
       return;
     }
+
     if (window.confirm("Are you sure you want to submit for review? This action will lock testing.")) {
       const computedSystemResult: 'Effective' | 'Ineffective' = summary.failed / summary.total > 0.1 ? "Ineffective" : "Effective";
       const updatedControl: EngagementControl = {
@@ -846,9 +908,24 @@ const TestingWorkspacePage: React.FC<{
         submittedBy: "Aarav Mehta",
         submittedOn: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
       };
-      setOverallStatus("Submitted");
-      showToast("Control submitted for review.");
-      setTimeout(() => onExit(updatedControl), 500);
+
+      // TEMP_DEMO_AMAZON_TRANSPORT: staged submission animation
+      if (isAtcControl) {
+        setIsSubmitting(true);
+        setSubmissionStep(1);
+        
+        setTimeout(() => setSubmissionStep(2), 1000);
+        setTimeout(() => {
+          setIsSubmitting(false);
+          setOverallStatus("Submitted");
+          showToast("Control submitted for review.");
+          onExit(updatedControl);
+        }, 2200);
+      } else {
+        setOverallStatus("Submitted");
+        showToast("Control submitted for review.");
+        onExit(updatedControl);
+      }
     }
   };
 
@@ -1001,7 +1078,8 @@ const TestingWorkspacePage: React.FC<{
       <div className="flex-grow flex overflow-hidden">
         {setupStage !== 'complete' ? (
           <div className="flex-grow overflow-y-auto w-full p-6">
-             <PopulationSamplingSetup onComplete={() => setSetupStage('complete')} mockSamples={localSamples} />
+             {/* TEMP_DEMO_AMAZON_TRANSPORT: pass controlId to enable ATC-specific sampling UI and delays */}
+             <PopulationSamplingSetup onComplete={() => setSetupStage('complete')} mockSamples={localSamples} controlId={control.controlId} />
           </div>
         ) : (
           <>
@@ -1192,7 +1270,7 @@ const TestingWorkspacePage: React.FC<{
                         <>
                           <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
                           <span className="text-sm font-medium text-amber-700">
-                            {Object.values(evidenceReadiness).filter(v => v === 'ready').length} of {controlDetails.samples.length} samples ready.
+                            {Object.values(evidenceReadiness).filter(v => v === 'ready').length} of {localSamples.length} samples ready.
                           </span>
                         </>
                       )}
@@ -1388,7 +1466,7 @@ const TestingWorkspacePage: React.FC<{
             disabled={
               summary.notTested > 0 ||
               overallStatus === "Submitted" ||
-              (engagement.status !== "IN PROGRESS" && engagement.status !== "PLANNING")
+              (engagement.status !== "IN PROGRESS" && engagement.status !== "PLANNING" && engagement.status !== "UNDER REVIEW")
             }
             className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
           >
@@ -1444,7 +1522,79 @@ const TestingWorkspacePage: React.FC<{
         isOpen={isWorkflowPlanOpen}
         onClose={() => setIsWorkflowPlanOpen(false)}
         plan={controlDetails.testScript?.workflowPlan || (isAmzTransport ? DEFAULT_AMZ_WORKFLOW_PLAN : undefined)}
+        controlId={control.controlId}
       />
+
+      {/* ========================= TEMP_DEMO_AMAZON_TRANSPORT: Testing Processing Overlay ========================= */}
+      {isTestingProcessing && (
+         <div className="absolute inset-0 z-50 bg-white flex flex-col items-center justify-center p-8">
+            <div className="w-20 h-20 mb-10 relative">
+               <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
+               <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            
+            <div className="max-w-md w-full text-center">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Executing Control Test Plan</h3>
+              <p className="text-sm text-gray-500 mb-8">AI-driven verification in progress for {summary.total} driver samples...</p>
+              
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 shadow-sm mb-6 w-full text-left">
+                <div className="space-y-4">
+                  {[
+                    { msg: "Validating evidence across samples…", stepId: 1 },
+                    { msg: "Running attribute checks…", stepId: 2 },
+                    { msg: "Cross-verifying compliance rules…", stepId: 3 },
+                    { msg: "Evaluating exceptions…", stepId: 4 },
+                    { msg: "Finalizing control test results…", stepId: 5 },
+                  ].map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      {processingStep >= step.stepId ? (
+                         <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                           <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                         </div>
+                      ) : processingStep === idx ? (
+                         <div className="w-6 h-6 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin flex-shrink-0"></div>
+                      ) : (
+                         <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex-shrink-0"></div>
+                      )}
+                      <span className={`text-sm font-semibold transition-colors ${processingStep >= step.stepId ? 'text-gray-900' : processingStep === idx ? 'text-indigo-700' : 'text-gray-400'}`}>
+                        {step.msg}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                 <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${(processingStep / 5) * 100}%` }}></div>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                <span>Testing Progress</span>
+                <span>{Math.min(100, (processingStep / 5) * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+         </div>
+      )}
+
+      {/* ========================= TEMP_DEMO_AMAZON_TRANSPORT: Submitting Overlay ========================= */}
+      {isSubmitting && (
+         <div className="absolute inset-0 z-50 bg-indigo-600 bg-opacity-95 flex flex-col items-center justify-center p-8 text-white">
+            <div className="w-20 h-20 mb-8 relative">
+               <div className="absolute inset-0 border-4 border-indigo-400/30 rounded-full"></div>
+               <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <h3 className="text-2xl font-bold mb-3">Finalizing Submission</h3>
+            <div className="text-indigo-100 flex flex-col items-center gap-2">
+               <div className="flex items-center gap-2">
+                 {submissionStep >= 1 ? <CheckCircleIcon className="w-5 h-5 text-green-300" /> : <div className="w-5 h-5 border-2 border-indigo-400 rounded-full animate-pulse" />}
+                 <span className={submissionStep >= 1 ? 'text-white' : ''}>Submitting results for review…</span>
+               </div>
+               <div className="flex items-center gap-2">
+                 {submissionStep >= 2 ? <CheckCircleIcon className="w-5 h-5 text-green-300" /> : <div className="w-5 h-5 border-2 border-indigo-400 rounded-full" />}
+                 <span className={submissionStep >= 2 ? 'text-white' : ''}>Locking test results…</span>
+               </div>
+            </div>
+         </div>
+      )}
     </div>
   );
 };

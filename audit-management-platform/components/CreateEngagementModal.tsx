@@ -11,6 +11,9 @@ interface CreateEngagementModalProps {
   onSubmit: (data: NewEngagementData) => void;
   existingEngagements: Engagement[];
   racmList: RACM[];
+  // TEMP_DEMO_AMAZON_TRANSPORT: optional prefill values for demo flow
+  // To revert: delete this prop and remove its usage below
+  demoDefaults?: Partial<Omit<NewEngagementData, 'linkedRacmName'>>;
 }
 
 const INITIAL_FORM_STATE: Omit<NewEngagementData, 'linkedRacmName'> = {
@@ -23,18 +26,25 @@ const INITIAL_FORM_STATE: Omit<NewEngagementData, 'linkedRacmName'> = {
   description: '',
 };
 
-const CreateEngagementModal: React.FC<CreateEngagementModalProps> = ({ isOpen, onClose, onSubmit, existingEngagements, racmList }) => {
+const CreateEngagementModal: React.FC<CreateEngagementModalProps> = ({ isOpen, onClose, onSubmit, existingEngagements, racmList, demoDefaults }) => {
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setFormData(INITIAL_FORM_STATE);
+      if (demoDefaults) {
+        // TEMP_DEMO_AMAZON_TRANSPORT: reuse existing engagement creation UI instead of direct navigation
+        // Prefill form with demo data so the real create-engagement UX is preserved
+        setFormData({ ...INITIAL_FORM_STATE, ...demoDefaults });
+        setIsDirty(true); // mark dirty so Done button activates once validation passes
+      } else {
+        setFormData(INITIAL_FORM_STATE);
+        setIsDirty(false);
+      }
       setErrors({});
-      setIsDirty(false);
     }
-  }, [isOpen]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validate = (currentData: typeof formData) => {
     const newErrors: Record<string, string> = {};

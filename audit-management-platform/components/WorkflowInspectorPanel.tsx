@@ -6,6 +6,7 @@ interface WorkflowInspectorPanelProps {
   isOpen: boolean;
   onClose: () => void;
   plan?: WorkflowPlanStep[];
+  controlId?: string; // TEMP_DEMO_AMAZON_TRANSPORT: added controlId for hardcoded content
 }
 
 const REFERENCE_FILES = [
@@ -38,7 +39,7 @@ const WORKFLOW_CODE = `function validateInvoiceWorkflow(publicationInvoice, medi
   };
 }`;
 
-const WorkflowInspectorPanel: React.FC<WorkflowInspectorPanelProps> = ({ isOpen, onClose, plan }) => {
+const WorkflowInspectorPanel: React.FC<WorkflowInspectorPanelProps> = ({ isOpen, onClose, plan, controlId }) => {
   const [activeTab, setActiveTab] = useState<'planner' | 'reference' | 'coder'>('planner');
 
   const getActionIcon = (actionType: string) => {
@@ -73,6 +74,134 @@ const WorkflowInspectorPanel: React.FC<WorkflowInspectorPanelProps> = ({ isOpen,
 
   const displayPlan = plan && plan.length > 0 ? plan : [];
 
+  // TEMP_DEMO_AMAZON_TRANSPORT: hardcoded workflow inspector content for ATC-03
+  const renderAtc03Plan = () => (
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Workflow Objective</h3>
+        <p className="text-sm text-gray-800 bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
+          Validate that each driver has a valid, active, and transport-appropriate driving license before assignment.
+        </p>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inputs</h3>
+        <ul className="grid grid-cols-1 gap-2">
+           {['Driver population dataset', 'Driving License front image/PDF', 'Driving License back image/PDF', 'Optional verification/reference dataset'].map(input => (
+             <li key={input} className="flex items-center gap-2 text-sm text-gray-700 bg-white border border-gray-200 p-2 rounded-md">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                {input}
+             </li>
+           ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Workflow Steps</h3>
+        <div className="space-y-3 relative pl-4 border-l-2 border-gray-100 ml-1">
+          {[
+            { id: 1, action: 'Extract', msg: 'Load driver population records' },
+            { id: 2, action: 'Match', msg: 'Match uploaded license files to driver identifier' },
+            { id: 3, action: 'Extract', msg: 'Extract key fields from license:\nDL Number, Driver Name, Father’s Name, DOB, Issue Date, Expiry Date, License Class, Badge, Issuing RTO / State, Address' },
+            { id: 4, action: 'Validate', msg: 'Validate required fields are present' },
+            { id: 5, action: 'Validate', msg: 'Check expiry date validity' },
+            { id: 6, action: 'Validate', msg: 'Check license class is suitable' },
+            { id: 7, action: 'Verify', msg: 'Check status is active / not suspended / not revoked' },
+            { id: 8, action: 'Verify', msg: 'Flag pending challans if present' },
+            { id: 9, action: 'Generate', msg: 'Generate attribute-level results' },
+            { id: 10, action: 'Generate', msg: 'Produce sample/control test outcome' },
+          ].map((step) => (
+            <div key={step.id} className="relative flex gap-3">
+              <div className="absolute -left-[23px] top-1 bg-white rounded-full p-0.5 shadow-sm ring-1 ring-gray-100">
+                {getActionIcon(step.action)}
+              </div>
+              <div className="bg-white border border-gray-100 rounded-lg p-3 shadow-sm text-sm text-gray-800 flex-grow">
+                 <span className="font-bold text-gray-400 mr-2">{step.id}.</span>
+                 <span className="whitespace-pre-line">{step.msg}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Output</h3>
+        <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg space-y-2">
+           {['Attribute-level validation results', 'Exceptions list', 'Final license compliance result'].map(out => (
+             <div key={out} className="flex items-center gap-2 text-sm text-emerald-800">
+                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                {out}
+             </div>
+           ))}
+        </div>
+      </section>
+    </div>
+  );
+
+  // TEMP_DEMO_AMAZON_TRANSPORT: hardcoded workflow inspector content for ATC-10
+  const renderAtc10Plan = () => (
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Workflow Objective</h3>
+        <p className="text-sm text-gray-800 bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
+          Validate that POSH policy and acknowledgement artifacts are present, complete, and compliant with required policy governance expectations.
+        </p>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inputs</h3>
+        <ul className="grid grid-cols-1 gap-2">
+           {['Employee/partner population dataset', 'POSH policy PDF', 'Employee acknowledgement / declaration file', 'Committee details / supporting governance document'].map(input => (
+             <li key={input} className="flex items-center gap-2 text-sm text-gray-700 bg-white border border-gray-200 p-2 rounded-md">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                {input}
+             </li>
+           ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Workflow Steps</h3>
+        <div className="space-y-3 relative pl-4 border-l-2 border-gray-100 ml-1">
+          {[
+            { id: 1, action: 'Extract', msg: 'Load employee or partner population records' },
+            { id: 2, action: 'Match', msg: 'Identify related POSH documents' },
+            { id: 3, action: 'Validate', msg: 'Validate POSH policy file is uploaded' },
+            { id: 4, action: 'Verify', msg: 'Check POSH clause is present' },
+            { id: 5, action: 'Verify', msg: 'Check Internal Committee details are mentioned' },
+            { id: 6, action: 'Validate', msg: 'Check employee acknowledgement / signature exists' },
+            { id: 7, action: 'Validate', msg: 'Validate effective date is available' },
+            { id: 8, action: 'Verify', msg: 'Validate company signatory / stamp is present' },
+            { id: 9, action: 'Generate', msg: 'Generate attribute-level results' },
+            { id: 10, action: 'Generate', msg: 'Produce sample/control test outcome' },
+          ].map((step) => (
+            <div key={step.id} className="relative flex gap-3">
+              <div className="absolute -left-[23px] top-1 bg-white rounded-full p-0.5 shadow-sm ring-1 ring-gray-100">
+                {getActionIcon(step.action)}
+              </div>
+              <div className="bg-white border border-gray-100 rounded-lg p-3 shadow-sm text-sm text-gray-800 flex-grow">
+                 <span className="font-bold text-gray-400 mr-2">{step.id}.</span>
+                 <span className="whitespace-pre-line">{step.msg}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Output</h3>
+        <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg space-y-2">
+           {['POSH compliance attribute results', 'Missing artifact flags', 'Final control testing result'].map(out => (
+             <div key={out} className="flex items-center gap-2 text-sm text-emerald-800">
+                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                {out}
+             </div>
+           ))}
+        </div>
+      </section>
+    </div>
+  );
+
   return (
     <>
       {/* Backdrop */}
@@ -89,9 +218,10 @@ const WorkflowInspectorPanel: React.FC<WorkflowInspectorPanelProps> = ({ isOpen,
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-white flex-shrink-0 border-b border-gray-200">
           <div>
              <h2 className="text-xl font-bold text-gray-900">Workflow Inspector</h2>
+             {controlId && <p className="text-xs text-gray-500 mt-0.5">Control Reference: <span className="font-mono text-indigo-600 font-semibold">{controlId}</span></p>}
           </div>
           <button
             onClick={onClose}
@@ -102,21 +232,21 @@ const WorkflowInspectorPanel: React.FC<WorkflowInspectorPanelProps> = ({ isOpen,
         </div>
 
         {/* Tabs */}
-        <div className="px-6 border-b border-gray-200 flex space-x-6">
+        <div className="px-6 border-b border-gray-200 flex space-x-6 bg-gray-50/50">
           <button 
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'planner' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            className={`pt-3 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'planner' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             onClick={() => setActiveTab('planner')}
           >
             Planner
           </button>
           <button 
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'reference' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            className={`pt-3 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'reference' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             onClick={() => setActiveTab('reference')}
           >
             Reference
           </button>
           <button 
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'coder' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            className={`pt-3 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'coder' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             onClick={() => setActiveTab('coder')}
           >
             Coder
@@ -124,31 +254,30 @@ const WorkflowInspectorPanel: React.FC<WorkflowInspectorPanelProps> = ({ isOpen,
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
           {activeTab === 'planner' && (
-            <div className="space-y-4 relative pl-4">
-              {displayPlan.length === 0 ? (
-                <div className="text-gray-500 text-sm">No workflow plan configured.</div>
+            <div className="space-y-4">
+              {controlId === 'ATC-03' ? renderAtc03Plan() : 
+               controlId === 'ATC-10' ? renderAtc10Plan() :
+               displayPlan.length === 0 ? (
+                <div className="text-gray-500 text-sm italic pl-4">No workflow plan configured for this control.</div>
               ) : (
-                displayPlan.map((step, idx) => (
-                  <div key={idx} className="relative flex gap-4">
-                    {/* Thread line */}
-                    {idx !== displayPlan.length - 1 && (
-                      <div className="absolute left-[9px] top-6 bottom-[-24px] w-px bg-gray-200"></div>
-                    )}
-                    
-                    <div className="relative z-10 flex-shrink-0 bg-white rounded-full p-1 shadow-sm ring-1 ring-gray-200 mt-0.5 self-start">
+                <div className="space-y-4 relative pl-4 border-l-2 border-gray-100 ml-1">
+                {displayPlan.map((step, idx) => (
+                  <div key={idx} className="relative flex gap-3">
+                    <div className="absolute -left-[23px] top-1 bg-white rounded-full p-0.5 shadow-sm ring-1 ring-gray-100">
                       {getActionIcon(step.actionType)}
                     </div>
                     
-                    <div className="flex-grow pt-0 pb-1">
+                    <div className="flex-grow">
                       <div className="text-sm text-gray-700 bg-white px-3 py-2.5 rounded-lg shadow-sm border border-gray-100 flex items-start gap-2">
                          <span className="font-semibold text-gray-500 flex-shrink-0">{step.id}.</span> 
                          <span className="leading-snug mt-0.5 whitespace-pre-line">{step.description}</span>
                       </div>
                     </div>
                   </div>
-                ))
+                ))}
+                </div>
               )}
             </div>
           )}
