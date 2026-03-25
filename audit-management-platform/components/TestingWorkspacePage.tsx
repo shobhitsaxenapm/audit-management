@@ -28,7 +28,7 @@ import SampleNavigator from "./SampleNavigator";
 import TestingSummaryPanel from "./TestingSummary";
 import Toast from "./Toast";
 import TestingPanel from "./TestingPanel";
-import { ChevronRightIcon, UploadIcon, InfoCircleIcon, CloseIcon, TableIcon, CheckCircleIcon } from "./icons/Icons";
+import { ChevronRightIcon, UploadIcon, InfoCircleIcon, CloseIcon, TableIcon, CheckCircleIcon, DownloadIcon } from "./icons/Icons";
 import ControlDataSourcesSection from "./ControlDataSourcesSection";
 import DatasetPreviewModal from "./DatasetPreviewModal";
 import SampleEvidenceSection from "./SampleEvidenceSection";
@@ -41,12 +41,62 @@ import PopulationSamplingSetup, { SetupStage } from "./PopulationSamplingSetup";
 import { dataViewerDatasets, datasetNameToId } from "../dataViewerData";
 import type { WorkflowPlanStep } from "../types";
 
+// TESTING_PAGE_STYLE_OPTIMIZATION: sub-components for optimized demo workspace
+const CompactSnapshotField: React.FC<{ label: string; value: string | number | null }> = ({ label, value }) => (
+  <div className="flex flex-col">
+    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</span>
+    <span className="text-[13px] font-semibold text-gray-800 truncate">{value || '—'}</span>
+  </div>
+);
+
+const EvidenceTaskRow: React.FC<{ 
+  type: string; 
+  description: string; 
+  uploaded: boolean; 
+  onUpload: () => void;
+  isLocked?: boolean;
+}> = ({ type, description, uploaded, onUpload, isLocked }) => (
+  <div className={`p-3 rounded-lg border transition-all ${uploaded ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 hover:border-indigo-300'}`}>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${uploaded ? 'bg-green-500' : 'bg-gray-100'}`}>
+          {uploaded ? (
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+          ) : (
+             <UploadIcon className="w-4 h-4 text-gray-400" />
+          )}
+        </div>
+        <div>
+          <h5 className="text-sm font-bold text-gray-900">{type}</h5>
+          <p className="text-xs text-gray-500">{description}</p>
+        </div>
+      </div>
+      <button 
+        onClick={onUpload} 
+        disabled={isLocked}
+        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${uploaded ? 'text-green-700 bg-green-100' : 'text-indigo-600 bg-white border border-indigo-200 hover:bg-indigo-50'}`}
+      >
+        {uploaded ? 'Replace' : 'Upload'}
+      </button>
+    </div>
+  </div>
+);
+
 // --- HELPER & SUB-COMPONENTS (scoped to this file) ---
 
+// TEMP_DEMO_AMAZON_TRANSPORT: hardcoded workflow plans for demo controls
 const DEFAULT_AMZ_WORKFLOW_PLAN: WorkflowPlanStep[] = [
-  { id: 1, actionType: 'Extract', description: 'Extract Driver Background Verification (BGV) data from the HR onboarding system for the selected sampling period.' },
-  { id: 2, actionType: 'Match', description: 'Match the extracted BGV records with the physical evidence documents (BGV PDF, Offer Letter, Aadhar, RC).' },
-  { id: 3, actionType: 'Verify', description: 'Verify that each mandatory check (Name Match, DL Verification, Criminal Check) is documented and passed in the evidence.' }
+  { id: 1, actionType: 'Extract', description: 'Extract Driver population dataset for the audit period (FY24-25).' },
+  { id: 2, actionType: 'Match', description: 'Select 5 representative driver samples across various regions.' },
+  { id: 3, actionType: 'Match', description: 'Match Driver ID and Name with physical Driving License scans.' },
+  { id: 4, actionType: 'Verify', description: 'Verify license expiry date and vehicle class authorization (HMV/LMV).' }
+];
+
+const POSH_AMZ_WORKFLOW_PLAN: WorkflowPlanStep[] = [
+  { id: 1, actionType: 'Extract', description: 'Aggregate list of all registered Transport Partners/Vendors.' },
+  { id: 2, actionType: 'Extract', description: 'Retrieve training logs and policy acknowledgement timestamps from partner portals.' },
+  { id: 3, actionType: 'Match', description: 'Collect POSH training certificates and Committee formation documents.' },
+  { id: 4, actionType: 'Verify', description: 'Evaluate compliance regarding mandatory training coverage and internal committee composition.' }
 ];
 
 const RuleLogicTooltip: React.FC<{ logic: RuleLogic }> = ({ logic }) => {
@@ -968,6 +1018,18 @@ const TestingWorkspacePage: React.FC<{
     );
   }
 
+  // TESTING_PAGE_STYLE_OPTIMIZATION: flag for compact demo workspace layout
+  const isOptimizedDemoControl = control.controlId === 'ATC-03' || control.controlId === 'ATC-10';
+  
+  // TESTING_PAGE_STYLE_OPTIMIZATION: file upload handling for compact cards
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
+
+  const handleUploadClick = (evidenceId: string) => {
+    setActiveEvidenceId(evidenceId);
+    fileInputRef.current?.click();
+  };
+
   const workflowStages = useMemo(() => {
     if (setupStage !== "complete") {
       return [
@@ -1083,203 +1145,416 @@ const TestingWorkspacePage: React.FC<{
           </div>
         ) : (
           <>
-            <SampleNavigator
-              samples={localSamples}
-              statuses={sampleStatuses}
-              currentIndex={currentSampleIndex}
-              onSelect={setCurrentSampleIndex}
-              mode={testingStep === 1 ? 'evidence' : 'results'}
-              evidenceStatuses={evidenceReadiness}
-            />
+            <div className={`flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto transition-all ${isOptimizedDemoControl ? 'w-48' : 'w-64'}`}>
+              <SampleNavigator
+                samples={localSamples}
+                statuses={sampleStatuses}
+                currentIndex={currentSampleIndex}
+                onSelect={setCurrentSampleIndex}
+                mode={testingStep === 1 ? 'evidence' : 'results'}
+                evidenceStatuses={evidenceReadiness}
+              />
+            </div>
 
-            <main className="flex-grow p-6 overflow-y-auto">
-              <TestScriptHeader control={control} controlDetails={controlDetails} isWorkflowPlanOpen={isWorkflowPlanOpen} onViewWorkflowPlan={() => setIsWorkflowPlanOpen(!isWorkflowPlanOpen)} />
+            <main className={`flex-grow p-6 overflow-y-auto ${isOptimizedDemoControl ? 'bg-gray-50/30' : ''}`}>
+              {/* TESTING_PAGE_STYLE_OPTIMIZATION: Compact sticky summary row for demo controls */}
+              {isOptimizedDemoControl ? (
+                <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 px-6 py-3 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between gap-6">
+                   <div className="flex items-center gap-6">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Control ID</span>
+                        <span className="text-[13px] font-bold text-gray-900">{control.controlId}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Name</span>
+                        <span className="text-[13px] font-bold text-gray-900 truncate max-w-[200px]">{control.controlName}</span>
+                      </div>
+                      <div className="h-8 border-l border-gray-200" />
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Total Samples</span>
+                        <span className="text-[13px] font-bold text-gray-900">{summary.total}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Evidence Ready</span>
+                        <span className="text-[13px] font-bold text-green-600">{Object.values(evidenceReadiness).filter(v => v === 'ready').length}</span>
+                      </div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      {/* TEMP_DEMO_AMAZON_TRANSPORT: restore workflow/test script actions on optimized testing page */}
+                      <button 
+                         onClick={() => {
+                            const a = document.createElement("a");
+                            a.href = "/Sample-Test-Script-Cash-and-Bank.xlsx";
+                            a.download = `Test_Script_${control.controlId}.xlsx`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                         }}
+                         className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm group"
+                      >
+                         <DownloadIcon className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500" />
+                         Download Test Script
+                      </button>
+
+                      <button 
+                        onClick={() => setIsWorkflowPlanOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 group"
+                      >
+                        <TableIcon className="w-3.5 h-3.5" />
+                        View Workflow Plan
+                      </button>
+                      
+                      <div className="h-6 border-l border-gray-200 mx-1" />
+
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Context</span>
+                        <span className="text-xs font-bold text-indigo-600">{testingStep === 1 ? 'Evidence Stage' : 'Testing Stage'}</span>
+                      </div>
+                   </div>
+                </div>
+              ) : (
+                <TestScriptHeader control={control} controlDetails={controlDetails} isWorkflowPlanOpen={isWorkflowPlanOpen} onViewWorkflowPlan={() => setIsWorkflowPlanOpen(!isWorkflowPlanOpen)} />
+              )}
 
               {/* ========================= STEP 1: Evidence Collection ========================= */}
               {testingStep === 1 && (
                 <>
-                  {/* Action Required Banner */}
-                  <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-lg">
-                    <InfoCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800 font-medium">
-                      <span className="font-bold">Action Required:</span> You must upload or select all required data sources before you can submit testing for review.
-                    </p>
-                  </div>
+                  {/* TESTING_PAGE_STYLE_OPTIMIZATION: Reorganized compact workspace for demo controls */}
+                  {isOptimizedDemoControl ? (
+                    <div className="max-w-5xl space-y-6 pb-20 mx-auto">
+                       {/* Section 1 — Sample Snapshot */}
+                       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                          <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-200 flex items-center justify-between">
+                             <h4 className="text-sm font-bold text-gray-900">Section 1 — Sample Snapshot</h4>
+                             <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-100 text-indigo-700 uppercase tracking-wider">Current Context</span>
+                          </div>
+                          <div className="p-5 grid grid-cols-6 gap-6">
+                             {control.controlId === 'ATC-03' ? (
+                               <>
+                                 <CompactSnapshotField label="Driver ID" value={currentSample?.sourceRowReference?.['Driver ID']} />
+                                 <CompactSnapshotField label="Driver Name" value={currentSample?.sourceRowReference?.['Driver Name']} />
+                                 <CompactSnapshotField label="DL Number" value={currentSample?.sourceRowReference?.['DL Number']} />
+                                 <CompactSnapshotField label="Expiry Date" value={currentSample?.sourceRowReference?.['Expiry Date']} />
+                                 <CompactSnapshotField label="License Class" value={currentSample?.sourceRowReference?.['License Class']} />
+                                 <CompactSnapshotField label="Status" value={currentSample?.sourceRowReference?.['Status']} />
+                               </>
+                             ) : (
+                               <>
+                                 <CompactSnapshotField label="Partner ID" value={currentSample?.sourceRowReference?.['Partner ID']} />
+                                 <CompactSnapshotField label="Company Name" value={currentSample?.sourceRowReference?.['Company Name']} />
+                                 <CompactSnapshotField label="Policy Date" value={currentSample?.sourceRowReference?.['Policy Date']} />
+                                 <CompactSnapshotField label="Employees" value={currentSample?.sourceRowReference?.['Employees']} />
+                                 <CompactSnapshotField label="Acknowledgement" value={currentSample?.sourceRowReference?.['Acknowledgement']} />
+                                 <CompactSnapshotField label="Committee" value={currentSample?.sourceRowReference?.['Committee Formed']} />
+                               </>
+                             )}
+                          </div>
+                       </div>
 
-              {/* Bulk Upload Section */}
-              <BulkEvidenceUpload
-                controlInstanceId={control.controlId}
-                session={bulkUploadSession}
-                samples={localSamples}
-                onSessionUpdate={setBulkUploadSession}
-                onApplyMapping={handleApplyMapping}
-              />
-
-              {/* Sample Data */}
-              {currentSample && (
-                <SampleData recordData={currentSample.sourceRowReference} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
-              )}
-
-              {/* Sample Evidence */}
-              {currentSample && (
-                <SampleEvidenceSection
-                  evidence={currentSample.evidence || []}
-                  onUpload={handleEvidenceUpload}
-                  onReplace={handleEvidenceUpload}
-                  onView={handleEvidenceView}
-                  isLocked={overallStatus === "Submitted"}
-                />
-              )}
-
-              {/* Attributes to be Tested */}
-              {currentSample && (controlDetails.attributes || controlDetails.testScript) && (() => {
-                // Build attribute list from either attributes or testScript rules
-                const attrList: { name: string; type: string }[] = isAmzTransport
-                  ? ['Name Match', 'DL Verification Status', 'Criminal Record Check'].map(name => ({ name, type: 'Mandatory' }))
-                  : controlDetails.testScript
-                    ? controlDetails.testScript.rules.map(r => ({ name: r.description || r.name, type: r.type }))
-                    : (controlDetails.attributes || []).map(a => ({ name: a.name, type: a.mandatory ? 'Mandatory' : 'Optional' }));
-
-                if (attrList.length === 0) return null;
-
-                // Map each attribute to required evidence types based on keywords
-                const evidenceKeywordMap: Record<string, string[]> = {
-                  'estimate': ['Estimate PDF'],
-                  'media invoice': ['Media Invoice PDF'],
-                  'publication invoice': ['Publication Invoice PDF'],
-                  'supporting': ['Supporting Document'],
-                  'invoice': ['Media Invoice PDF', 'Publication Invoice PDF'],
-                  'vendor': ['Publication Invoice PDF'],
-                  'document': ['Supporting Document'],
-                };
-
-                const currentEvidence = currentSample.evidence || [];
-
-                const rows = attrList.map(attr => {
-                  const nameLower = attr.name.toLowerCase();
-                  const requiredEvidenceSet = new Set<string>();
-                  
-                  for (const [keyword, evidenceTypes] of Object.entries(evidenceKeywordMap)) {
-                    if (nameLower.includes(keyword)) {
-                      evidenceTypes.forEach(et => requiredEvidenceSet.add(et));
-                    }
-                  }
-                  
-                  // If no keywords matched, require all evidence
-                  if (requiredEvidenceSet.size === 0) {
-                    currentEvidence.forEach(ev => requiredEvidenceSet.add(ev.evidenceType));
-                  }
-
-                  const requiredEvidence = Array.from(requiredEvidenceSet);
-                  const allPresent = requiredEvidence.length > 0 && requiredEvidence.every(
-                    reqType => currentEvidence.some(ev => ev.evidenceType === reqType && !!ev.fileName)
-                  );
-
-                  return { name: attr.name, type: attr.type, requiredEvidence, ready: allPresent };
-                });
-
-                return (
-                  <div className="mb-6">
-                    <h3 className="text-base font-semibold text-gray-800 mb-3">Attributes to be Tested</h3>
-                    <p className="text-xs text-gray-500 mb-3">These checks will be evaluated when testing runs. No results are shown until testing is executed.</p>
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/2">Attribute / Test Rule</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/3">Evidence Required</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/6">Readiness</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {rows.map((row, i) => (
-                            <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
-                              <td className="px-4 py-3 text-sm text-gray-800">
-                                <div className="flex items-center gap-2">
-                                  <span>{row.name}</span>
-                                  <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${row.type === 'Mandatory' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
-                                    {row.type}
-                                  </span>
+                       {/* Section 2 — Evidence Required */}
+                       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                          <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-200 flex items-center justify-between">
+                             <h4 className="text-sm font-bold text-gray-900">Section 2 — Evidence Tasks</h4>
+                             <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500">Wait for all tasks to show</span>
+                                <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                                   <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                </span>
+                             </div>
+                          </div>
+                          <div className="p-5 gap-4 flex flex-col">
+                             {currentSample && getAtcEvidenceTemplates(control.controlId).map((tmpl, idx) => {
+                                const matchedEvidence = currentSample.evidence.find(e => e.evidenceType === tmpl.evidenceType);
+                                const isUploaded = !!matchedEvidence?.fileName;
+                                return (
+                                  <EvidenceTaskRow 
+                                    key={idx}
+                                    type={tmpl.evidenceType}
+                                    description={tmpl.evidenceName}
+                                    uploaded={isUploaded}
+                                    onUpload={() => handleUploadClick(matchedEvidence?.evidenceId || tmpl.evidenceType)}
+                                    isLocked={overallStatus === "Submitted"}
+                                  />
+                                );
+                             })}
+                             
+                             <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                                <div className="text-sm">
+                                   <span className="font-bold text-gray-900">Note: </span>
+                                   <span className="text-gray-500 italic">Bulk mapping is available below for rapid population handling.</span>
                                 </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {row.requiredEvidence.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {row.requiredEvidence.map(ev => (
-                                      <span key={ev} className="inline-block px-2 py-0.5 text-xs rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        {ev}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400 italic">No specific evidence mapped</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-sm">
-                                {row.ready ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                    Ready
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
-                                    Missing Evidence
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })()}
+                                <button
+                                  onClick={() => handleUploadClick('general')}
+                                  className="text-indigo-600 text-sm font-bold hover:underline"
+                                >
+                                  Browse Individual File
+                                </button>
+                             </div>
+                          </div>
+                       </div>
 
-              {/* Evidence Completion Tracker */}
-              {currentSample && (
-                <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-2">Evidence Completion — Sample {currentSampleIndex + 1}</h4>
-                  {currentSampleMissingEvidence.length === 0 ? (
-                    <div className="flex items-center gap-2 text-green-700">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                      <span className="text-sm font-medium">All evidence uploaded for this sample.</span>
+                       {/* Section 3 — Readiness / Next Action */}
+                       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                          <div className="p-5 flex items-center justify-between">
+                             <div className="flex items-center gap-6">
+                                <div className="flex gap-2">
+                                   <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg flex flex-col items-center">
+                                      <span className="text-xs font-bold text-indigo-400 uppercase tracking-tighter">Uploaded</span>
+                                      <span className="text-xl font-black text-indigo-700">{currentSample?.evidence.filter(e => !!e.fileName).length}</span>
+                                   </div>
+                                   <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex flex-col items-center">
+                                      <span className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Missing</span>
+                                      <span className="text-xl font-black text-gray-400">{getAtcEvidenceTemplates(control.controlId).length - (currentSample?.evidence.filter(e => !!e.fileName).length || 0)}</span>
+                                   </div>
+                                </div>
+                                <div>
+                                   <div className="flex items-center gap-2 mb-1">
+                                      <div className={`w-3 h-3 rounded-full ${evidenceReadiness[currentSample?.sampleId || ''] === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-amber-400 animate-pulse outline outline-amber-100'}`}></div>
+                                      <h5 className="font-black text-gray-900 uppercase tracking-wider text-xs">Readiness Check</h5>
+                                   </div>
+                                   <p className="text-[13px] font-medium text-gray-600">
+                                      {evidenceReadiness[currentSample?.sampleId || ''] === 'ready' 
+                                        ? "All required evidence present for this sample context." 
+                                        : "Pending required document uploads to fulfill control test plan."}
+                                   </p>
+                                </div>
+                             </div>
+                             
+                             {allSamplesReady && (
+                                <div className="animate-bounce">
+                                   <button 
+                                     onClick={() => setTestingStep(2)}
+                                     className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-black text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                   >
+                                      Run Testing <ChevronRightIcon className="w-4 h-4" />
+                                   </button>
+                                </div>
+                             )}
+                          </div>
+                       </div>
+
+                       {/* Collapsed Bulk Upload as Secondary */}
+                       <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                          <button 
+                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                          >
+                             <div className="flex items-center gap-2">
+                                <TableIcon className="w-5 h-5 text-gray-400" />
+                                <span className="text-sm font-bold text-gray-700">Automation Tool: Bulk Evidence Mapper</span>
+                             </div>
+                             <span className="text-xs text-indigo-600 font-bold">Tool Active</span>
+                          </button>
+                          <div className="p-1 border-t border-gray-100">
+                             <BulkEvidenceUpload
+                                controlInstanceId={control.controlId}
+                                session={bulkUploadSession}
+                                samples={localSamples}
+                                onSessionUpdate={setBulkUploadSession}
+                                onApplyMapping={handleApplyMapping}
+                             />
+                          </div>
+                       </div>
                     </div>
                   ) : (
-                    <div>
-                      <p className="text-sm text-red-700 font-medium mb-2">Missing {currentSampleMissingEvidence.length} item(s):</p>
-                      <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
-                        {currentSampleMissingEvidence.map(ev => (
-                          <li key={ev.evidenceId}>{ev.evidenceType}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                    <>
+                      {/* Action Required Banner */}
+                      <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                        <InfoCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-amber-800 font-medium">
+                          <span className="font-bold">Action Required:</span> You must upload or select all required data sources before you can submit testing for review.
+                        </p>
+                      </div>
 
-                  {/* Overall readiness */}
-                  <div className="mt-4 pt-3 border-t border-gray-200">
-                    <h5 className="text-xs font-semibold text-gray-600 uppercase mb-1">Overall Control Readiness</h5>
-                    <div className="flex items-center gap-2">
-                      {allSamplesReady ? (
-                        <>
-                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
-                          <span className="text-sm font-medium text-green-700">All samples ready — you can run testing.</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
-                          <span className="text-sm font-medium text-amber-700">
-                            {Object.values(evidenceReadiness).filter(v => v === 'ready').length} of {localSamples.length} samples ready.
-                          </span>
-                        </>
+                      {/* Bulk Upload Section */}
+                      <BulkEvidenceUpload
+                        controlInstanceId={control.controlId}
+                        session={bulkUploadSession}
+                        samples={localSamples}
+                        onSessionUpdate={setBulkUploadSession}
+                        onApplyMapping={handleApplyMapping}
+                      />
+
+                      {/* Sample Data */}
+                      {currentSample && (
+                        <SampleData recordData={currentSample.sourceRowReference} dataSources={dataSources} setPreviewDataset={setPreviewDataset} onOpenDataViewer={openDataViewer} />
                       )}
-                    </div>
-                  </div>
-                </div>
+
+                      {/* Sample Evidence */}
+                      {currentSample && (
+                        <SampleEvidenceSection
+                          evidence={currentSample.evidence || []}
+                          onUpload={handleEvidenceUpload}
+                          onReplace={handleEvidenceUpload}
+                          onView={handleEvidenceView}
+                          isLocked={overallStatus === "Submitted"}
+                        />
+                      )}
+
+                      {/* Attributes to be Tested */}
+                      {currentSample && (controlDetails.attributes || controlDetails.testScript) && (() => {
+                        // Build attribute list from either attributes or testScript rules
+                        const attrList: { name: string; type: string }[] = isAmzTransport
+                          ? ['Name Match', 'DL Verification Status', 'Criminal Record Check'].map(name => ({ name, type: 'Mandatory' }))
+                          : controlDetails.testScript
+                            ? controlDetails.testScript.rules.map(r => ({ name: r.description || r.name, type: r.type }))
+                            : (controlDetails.attributes || []).map(a => ({ name: a.name, type: a.mandatory ? 'Mandatory' : 'Optional' }));
+
+                        if (attrList.length === 0) return null;
+
+                        // Map each attribute to required evidence types based on keywords
+                        const evidenceKeywordMap: Record<string, string[]> = {
+                          'estimate': ['Estimate PDF'],
+                          'media invoice': ['Media Invoice PDF'],
+                          'publication invoice': ['Publication Invoice PDF'],
+                          'supporting': ['Supporting Document'],
+                          'invoice': ['Media Invoice PDF', 'Publication Invoice PDF'],
+                          'vendor': ['Publication Invoice PDF'],
+                          'document': ['Supporting Document'],
+                        };
+
+                        const currentEvidence = currentSample.evidence || [];
+
+                        const rows = attrList.map(attr => {
+                          const nameLower = attr.name.toLowerCase();
+                          const requiredEvidenceSet = new Set<string>();
+                          
+                          for (const [keyword, evidenceTypes] of Object.entries(evidenceKeywordMap)) {
+                            if (nameLower.includes(keyword)) {
+                              evidenceTypes.forEach(et => requiredEvidenceSet.add(et));
+                            }
+                          }
+                          
+                          // If no keywords matched, require all evidence
+                          if (requiredEvidenceSet.size === 0) {
+                            currentEvidence.forEach(ev => requiredEvidenceSet.add(ev.evidenceType));
+                          }
+
+                          const requiredEvidence = Array.from(requiredEvidenceSet);
+                          const allPresent = requiredEvidence.length > 0 && requiredEvidence.every(
+                            reqType => currentEvidence.some(ev => ev.evidenceType === reqType && !!ev.fileName)
+                          );
+
+                          return { name: attr.name, type: attr.type, requiredEvidence, ready: allPresent };
+                        });
+
+                        return (
+                          <div className="mb-6">
+                            <h3 className="text-base font-semibold text-gray-800 mb-3">Attributes to be Tested</h3>
+                            <p className="text-xs text-gray-500 mb-3">These checks will be evaluated when testing runs. No results are shown until testing is executed.</p>
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/2">Attribute / Test Rule</th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/3">Evidence Required</th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-1/6">Readiness</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {rows.map((row, i) => (
+                                    <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
+                                      <td className="px-4 py-3 text-sm text-gray-800">
+                                        <div className="flex items-center gap-2">
+                                          <span>{row.name}</span>
+                                          <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${row.type === 'Mandatory' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                            {row.type}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-gray-600">
+                                        {row.requiredEvidence.length > 0 ? (
+                                          <div className="flex flex-wrap gap-1">
+                                            {row.requiredEvidence.map(ev => (
+                                              <span key={ev} className="inline-block px-2 py-0.5 text-xs rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                {ev}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <span className="text-gray-400 italic">No specific evidence mapped</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm">
+                                        {row.ready ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                            Ready
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+                                            Missing Evidence
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Evidence Completion Tracker */}
+                      {currentSample && (
+                        <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <h4 className="text-sm font-semibold text-gray-800 mb-2">Evidence Completion — Sample {currentSampleIndex + 1}</h4>
+                          {currentSampleMissingEvidence.length === 0 ? (
+                            <div className="flex items-center gap-2 text-green-700">
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                              <span className="text-sm font-medium">All evidence uploaded for this sample.</span>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm text-red-700 font-medium mb-2">Missing {currentSampleMissingEvidence.length} item(s):</p>
+                              <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
+                                {currentSampleMissingEvidence.map(ev => (
+                                  <li key={ev.evidenceId}>{ev.evidenceType}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Overall readiness */}
+                          <div className="mt-4 pt-3 border-t border-gray-200">
+                            <h5 className="text-xs font-semibold text-gray-600 uppercase mb-1">Overall Control Readiness</h5>
+                            <div className="flex items-center gap-2">
+                              {allSamplesReady ? (
+                                <>
+                                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
+                                  <span className="text-sm font-medium text-green-700">All samples ready — you can run testing.</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+                                  <span className="text-sm font-medium text-amber-700">
+                                    {Object.values(evidenceReadiness).filter(v => v === 'ready').length} of {localSamples.length} samples ready.
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* TESTING_PAGE_STYLE_OPTIMIZATION: Hidden file input for compact evidence cards */}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && activeEvidenceId) {
+                         handleEvidenceUpload(activeEvidenceId, file);
+                         setActiveEvidenceId(null);
+                      }
+                    }}
+                  />
+                </>
               )}
-            </>
-          )}
 
           {/* ========================= STEP 2: Testing Results ========================= */}
           {testingStep === 2 && (
@@ -1375,46 +1650,49 @@ const TestingWorkspacePage: React.FC<{
           )}
         </main>
 
-        {/* Right side panel — only show Control Summary in Step 2 */}
-        {testingStep === 2 && <TestingSummaryPanel summary={summary} />}
-
-        {/* Step 1: Evidence readiness panel */}
-        {testingStep === 1 && (
-          <aside className="w-72 flex-shrink-0 border-l border-gray-200 bg-white p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Evidence Overview</h3>
-            <div className="space-y-3">
-              {localSamples.map((sample: SampleModel, idx: number) => {
-                const status = evidenceReadiness[sample.sampleId] || 'pending';
-                const evList = sample.evidence || [];
-                const uploaded = evList.filter(ev => !!ev.fileName).length;
-                return (
-                  <button
-                    key={sample.sampleId}
-                    onClick={() => setCurrentSampleIndex(idx)}
-                    className={`w-full text-left p-3 rounded-md border text-sm transition ${
-                      idx === currentSampleIndex ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-800">Sample {idx + 1}</span>
-                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                        status === 'ready' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {status === 'ready' ? 'Ready' : 'Pending'}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">{uploaded}/{evList.length} evidence items</div>
-                    {/* Mini progress bar */}
-                    <div className="mt-1.5 w-full bg-gray-200 rounded-full h-1.5">
-                      <div
-                        className={`h-1.5 rounded-full ${status === 'ready' ? 'bg-green-500' : 'bg-amber-400'}`}
-                        style={{ width: `${evList.length > 0 ? (uploaded / evList.length) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+        {/* Right side panel — only show Control Summary in Step 2, or if NOT optimized demo control */}
+        {((testingStep === 1 && !isOptimizedDemoControl) || testingStep === 2) && (
+          <aside className={`flex-shrink-0 border-l border-gray-200 bg-white p-6 ${testingStep === 2 ? 'w-auto' : 'w-72'}`}>
+            {testingStep === 2 ? (
+               <TestingSummaryPanel summary={summary} />
+            ) : (
+              <>
+                <h3 className="text-base font-semibold text-gray-900 mb-4">Evidence Overview</h3>
+                <div className="space-y-3">
+                  {localSamples.map((sample: SampleModel, idx: number) => {
+                    const status = evidenceReadiness[sample.sampleId] || 'pending';
+                    const evList = sample.evidence || [];
+                    const uploaded = evList.filter(ev => !!ev.fileName).length;
+                    return (
+                      <button
+                        key={sample.sampleId}
+                        onClick={() => setCurrentSampleIndex(idx)}
+                        className={`w-full text-left p-3 rounded-md border text-sm transition ${
+                          idx === currentSampleIndex ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-800">Sample {idx + 1}</span>
+                          <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            status === 'ready' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {status === 'ready' ? 'Ready' : 'Pending'}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">{uploaded}/{evList.length} evidence items</div>
+                        {/* Mini progress bar */}
+                        <div className="mt-1.5 w-full bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full ${status === 'ready' ? 'bg-green-500' : 'bg-amber-400'}`}
+                            style={{ width: `${evList.length > 0 ? (uploaded / evList.length) * 100 : 0}%` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </aside>
         )}
           </>
@@ -1521,7 +1799,12 @@ const TestingWorkspacePage: React.FC<{
       <WorkflowInspectorPanel
         isOpen={isWorkflowPlanOpen}
         onClose={() => setIsWorkflowPlanOpen(false)}
-        plan={controlDetails.testScript?.workflowPlan || (isAmzTransport ? DEFAULT_AMZ_WORKFLOW_PLAN : undefined)}
+        plan={
+          controlDetails.testScript?.workflowPlan || 
+          (control.controlId === 'ATC-03' ? DEFAULT_AMZ_WORKFLOW_PLAN : 
+           control.controlId === 'ATC-10' ? POSH_AMZ_WORKFLOW_PLAN : 
+           isAmzTransport ? DEFAULT_AMZ_WORKFLOW_PLAN : undefined)
+        }
         controlId={control.controlId}
       />
 
