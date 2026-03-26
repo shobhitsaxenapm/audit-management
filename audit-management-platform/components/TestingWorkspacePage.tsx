@@ -1157,9 +1157,11 @@ const TestingWorkspacePage: React.FC<{
             </div>
 
             <main className={`flex-grow p-6 overflow-y-auto ${isOptimizedDemoControl ? 'bg-gray-50/30' : ''}`}>
-              {/* TESTING_PAGE_STYLE_OPTIMIZATION: Compact sticky summary row for demo controls */}
+              {/* TESTING_PAGE_STYLE_OPTIMIZATION: Compact summary row for demo controls */}
               {isOptimizedDemoControl ? (
-                <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 px-6 py-3 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between gap-6">
+                /* TEMP_DEMO_FIX: control summary row should remain static in normal document flow */
+                /* TEMP_DEMO_FIX: removed sticky/fixed behavior completely */
+                <div className="relative -mx-6 -mt-6 mb-6 px-6 py-3 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between gap-6">
                    <div className="flex items-center gap-6">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Control ID</span>
